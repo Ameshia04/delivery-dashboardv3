@@ -365,7 +365,7 @@ function fmt(n, suffix = '') { return (n === null || n === undefined) ? '—' : 
 // below once that's done (in BOTH index.html copies you maintain); until
 // then, entries fall back to this browser's localStorage and data.json's
 // manual.teamPulse, so the card still works, just without cross-device sync.
-const TEAM_PULSE_APPS_SCRIPT_URL = 'https://script.google.com/a/macros/apspayroll.com/s/AKfycbwxnWyDXOTmYLVJVkLplw1SjcVoXc-SjFiRiqrlPD2GraWCLYPDi_9LCP-kwK_4ToLJ/exec'; // e.g. 'https://script.google.com/macros/s/AKfycb.../exec'
+const TEAM_PULSE_APPS_SCRIPT_URL = ''; // e.g. 'https://script.google.com/macros/s/AKfycb.../exec'
 const PULSE_LABELS = { green: '🟢 Green — healthy', yellow: '🟡 Yellow — watch', red: '🔴 Red — at risk' };
 
 function pulseStorageKey(projectKey) { return `deliveryDashboard.teamPulse.${projectKey}`; }
@@ -402,10 +402,13 @@ let CURRENT_PULSE_PROJECT = 'All';
 
 // Saves to the shared Google Sheet (via the Apps Script Web App) when
 // TEAM_PULSE_APPS_SCRIPT_URL is configured; always also writes a same-browser
-// localStorage copy as an instant, offline-safe fallback. Content-Type is set
-// to text/plain (not application/json) specifically to avoid a CORS preflight
-// request -- Apps Script Web Apps only implement doGet/doPost, not doOptions,
-// so a preflight would fail even though the actual POST would have worked.
+// localStorage copy as an instant, offline-safe fallback. This is a GET
+// request with the data as query params (?action=save&...), not a POST with
+// a body -- Google Apps Script Web Apps redirect script.google.com requests
+// to script.googleusercontent.com, and fetch() dropped the POST body when
+// following that redirect, so doPost never actually received any data. A GET
+// has no body to lose, which is why saving is routed this way; see
+// scripts/team-pulse-apps-script.gs for the matching server-side change.
 async function saveTeamPulse() {
   const project = document.getElementById('pulseProject').value || 'All';
   const rating = document.getElementById('pulseRating').value;
@@ -422,11 +425,8 @@ async function saveTeamPulse() {
     return;
   }
   try {
-    const res = await fetch(TEAM_PULSE_APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ project, rating, notes, submittedBy }),
-    });
+    const params = new URLSearchParams({ action: 'save', project, rating, notes, submittedBy });
+    const res = await fetch(`${TEAM_PULSE_APPS_SCRIPT_URL}?${params.toString()}`, { cache: 'no-store' });
     const saved = await res.json();
     saveTeamPulseToStorage(project, saved);
     renderTeamPulseCurrent(saved, 'saved to shared Google Sheet');
