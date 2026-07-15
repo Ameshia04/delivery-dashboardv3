@@ -12,6 +12,14 @@
  *   JIRA_EMAIL      the Jira account email tied to the API token
  *   JIRA_API_TOKEN  Jira Cloud API token (id.atlassian.com/manage-profile/security/api-tokens)
  *
+ * Env var, optional:
+ *   CLAUDE_BOT_ACCOUNT_ID  Jira accountId (not email) of a dedicated agent/bot
+ *                          account. Once agent sessions consistently log work
+ *                          on tickets under this account, set this secret and
+ *                          AI Leverage switches from a component-tag guess to
+ *                          an objective worklogAuthor JQL measurement. Leave
+ *                          unset until that account/convention exists.
+ *
  * WHAT'S NEW IN V2:
  *   - Rolling 8-week (56-day) window, always relative to "today" (the
  *     day the script runs), instead of a fixed 30-day window.
@@ -49,6 +57,16 @@ const AGING_WIP_THRESHOLD_DAYS = 14; // open issues older than this are flagged 
 const BASE_URL = process.env.JIRA_BASE_URL;
 const EMAIL = process.env.JIRA_EMAIL;
 const TOKEN = process.env.JIRA_API_TOKEN;
+
+// AI Leverage, standardized measurement (optional, not required):
+// Once there's a single dedicated Jira account that Claude/agent sessions
+// consistently use to log work on a ticket (a worklog entry, not just a
+// comment -- JQL can filter worklogAuthor natively, but there's no equivalent
+// "commented by" clause), set this to that account's Jira accountId (not
+// email) as a GitHub Actions secret, e.g. CLAUDE_BOT_ACCOUNT_ID. When set,
+// AI Leverage switches from the current "Blocked"-style component-tag guess
+// to an objective worklogAuthor JQL query. When unset, behavior is unchanged.
+const CLAUDE_BOT_ACCOUNT_ID = process.env.CLAUDE_BOT_ACCOUNT_ID || null;
 
 if (!BASE_URL || !EMAIL || !TOKEN) {
   console.error("Missing JIRA_BASE_URL, JIRA_EMAIL, or JIRA_API_TOKEN environment variables.");
@@ -134,6 +152,19 @@ function isAiComponent(name) {
   return /claude|ai/i.test(name || "");
 }
 
+/** Objective AI Leverage signal, once a standard agent account exists: which
+ * issues in the resolved-window has that account logged work on. Returns
+ * null (meaning "no standard yet, fall back to the component-tag guess")
+ * when CLAUDE_BOT_ACCOUNT_ID isn't configured. */
+async function aiWorkedIssueKeys(key) {
+  if (!CLAUDE_BOT_ACCOUNT_ID) return null;
+  const issues = await searchAll(
+    `project = ${key} AND resolutiondate >= -${WINDOW_DAYS}d AND worklogAuthor = "${CLAUDE_BOT_ACCOUNT_ID}"`,
+    ["key"]
+  );
+  return new Set(issues.map((i) => i.key));
+}
+
 // Different projects use different literal Jira status names for the same
 // conceptual workflow stage (e.g. "In Progress" vs "In Development" both mean
 // active build work). This maps every real status name (lowercased) we've
@@ -176,8 +207,11 @@ function isCycleTimeStatus(name) {
   return canonical ? CYCLE_TIME_STATUSES.has(canonical) : false;
 }
 
-/** Analyze one issue's status changelog for cycle time, lead time, and regressions. */
-function analyzeIssue(issue, statusCategoryByName) {
+/** Analyze one issue's status changelog for cycle time, lead time, and
+ * regressions. `aiWorkedKeys` is null (component-tag heuristic) or a Set of
+ * issue keys the standard agent account worked on (objective measurement) --
+ * see aiWorkedIssueKeys(). */
+function analyzeIssue(issue, statusCategoryByName, aiWorkedKeys) {
   const created = new Date(issue.fields.created).getTime();
   const resolved = issue.fields.resolutiondate ? new Date(issue.fields.resolutiondate).getTime() : null;
 
@@ -218,7 +252,7 @@ function analyzeIssue(issue, statusCategoryByName) {
   if (resolved) leadTimeDays = (resolved - created) / 86400000;
 
   const hadTransition = histories.length > 0;
-  const isAiTagged = (issue.fields.components || []).some((c) => isAiComponent(c.name));
+  const isAiTagged = aiWorkedKeys ? aiWorkedKeys.has(issue.key) : (issue.fields.components || []).some((c) => isAiComponent(c.name));
 
   return { cycleTimeDays, leadTimeDays, regressed: regressions > 0, hadTransition, isAiTagged, resolved };
 }
@@ -283,6 +317,12 @@ async function analyzeEpics(key) {
     const children = await searchAll(`parent = ${epic.key}`, ["status"]);
     const childTotal = children.length;
     const childDone = children.filter((c) => c.fields.status.statusCategory && c.fields.status.statusCategory.key === "done").length;
+    // "Active" children are ones actually in an in-flight build/review/QA/
+    // acceptance stage (reusing the same CYCLE_TIME_STATUSES definition),
+    // as opposed to just sitting in Backlog/To Do/Ready for Development --
+    // this is what Focus Integrity below uses to decide if an Epic counts
+    // as "currently being worked."
+    const childActive = children.filter((c) => isCycleTimeStatus(c.fields.status.name)).length;
     const percentDone = childTotal ? round1((childDone / childTotal) * 100) : 0;
     results.push({
       key: epic.key,
@@ -290,6 +330,7 @@ async function analyzeEpics(key) {
       status: epic.fields.status.name,
       childTotal,
       childDone,
+      childActive,
       percentDone,
     });
   }
@@ -300,6 +341,13 @@ async function analyzeProject(key, statusCategoryByName) {
   const now = Date.now();
 
   const epics = await analyzeEpics(key);
+  // Focus Integrity (proposed proxy, pending a formal definition with the
+  // team): how many distinct Epics currently have active WIP vs. how many
+  // open Epics exist in total. Lower "active" relative to team size means
+  // work is concentrated on fewer Epics at once instead of spread thin
+  // across many simultaneously -- a WIP-discipline / context-switching signal.
+  const focusIntegrityActiveEpics = epics.filter((e) => e.childActive > 0).length;
+  const focusIntegrityTotalEpics = epics.length;
 
   // WIP snapshot: all currently open issues, grouped by status (not time-windowed).
   // Also pull issuelinks so we can surface real "blocked by" dependencies, not just a
@@ -391,7 +439,8 @@ async function analyzeProject(key, statusCategoryByName) {
     ["created", "resolutiondate", "components", "status"],
     "changelog"
   );
-  const analyzed = windowIssues.map((i) => analyzeIssue(i, statusCategoryByName));
+  const aiWorkedKeys = await aiWorkedIssueKeys(key);
+  const analyzed = windowIssues.map((i) => analyzeIssue(i, statusCategoryByName, aiWorkedKeys));
 
   // Weekly buckets: index 0 = oldest week (49-56 days ago), index 7 = this week (0-7 days ago).
   const buckets = Array.from({ length: 8 }, () => []);
@@ -429,6 +478,8 @@ async function analyzeProject(key, statusCategoryByName) {
   return {
     key,
     epics,
+    focusIntegrityActiveEpics,
+    focusIntegrityTotalEpics,
     wipByStatus,
     wipTotal: wipIssues.length,
     dependencies,
