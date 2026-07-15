@@ -365,7 +365,7 @@ function fmt(n, suffix = '') { return (n === null || n === undefined) ? '—' : 
 // below once that's done (in BOTH index.html copies you maintain); until
 // then, entries fall back to this browser's localStorage and data.json's
 // manual.teamPulse, so the card still works, just without cross-device sync.
-const TEAM_PULSE_APPS_SCRIPT_URL = ''; // e.g. 'https://script.google.com/macros/s/AKfycb.../exec'
+const TEAM_PULSE_APPS_SCRIPT_URL = 'https://script.google.com/a/macros/apspayroll.com/s/AKfycbwxnWyDXOTmYLVJVkLplw1SjcVoXc-SjFiRiqrlPD2GraWCLYPDi_9LCP-kwK_4ToLJ/exec'; // e.g. 'https://script.google.com/macros/s/AKfycb.../exec'
 const PULSE_LABELS = { green: '🟢 Green — healthy', yellow: '🟡 Yellow — watch', red: '🔴 Red — at risk' };
 
 function pulseStorageKey(projectKey) { return `deliveryDashboard.teamPulse.${projectKey}`; }
