@@ -97,6 +97,26 @@
     .filter-row input:focus { outline: none; border-color: var(--accent); }
     .overview-filter-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
     .overview-filter-row label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+    .pulse-criteria { margin-bottom: 14px; }
+    .pulse-criteria-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 6px; }
+    .pulse-criteria ul { padding-left: 18px; font-size: 12px; color: var(--muted); }
+    .pulse-criteria li { margin-bottom: 4px; }
+    .pulse-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .pulse-form select, .pulse-form textarea, .pulse-form input {
+      background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 10px; font-size: 12px; font-family: inherit; resize: vertical;
+    }
+    .pulse-form select:focus, .pulse-form textarea:focus, .pulse-form input:focus { outline: none; border-color: var(--accent); }
+    #pulseSaveBtn {
+      background: var(--accent); color: #fff; border: none; border-radius: 8px;
+      padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; align-self: flex-start;
+    }
+    #pulseSaveBtn:hover { opacity: 0.9; }
+    .pulse-current { border-top: 1px solid var(--border); padding-top: 10px; font-size: 13px; min-height: 20px; }
+    .pulse-chip { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .pulse-chip.green { background: #10331f; color: var(--green); }
+    .pulse-chip.yellow { background: #3a2f10; color: var(--yellow); }
+    .pulse-chip.red { background: #3a1a1a; color: var(--red); }
     #printBtn {
       background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
       padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -249,7 +269,7 @@
   <!-- FIVE SIGNALS -->
   <div id="tab-five-signals" class="tab-content">
     <div class="note-card">
-      Throughput, Quality, and AI Leverage are computed from Jira. Focus Integrity and Team Pulse have no Jira data source today — see the "manual" section of data.json.
+      Throughput, Quality, AI Leverage, and Focus Integrity are computed from Jira — Focus Integrity here is a proposed proxy (distinct Epics with active WIP) pending a formal definition with the team. Team Pulse has no Jira data source; it's a manual signal entered by the Delivery Manager below.
     </div>
     <div class="three-col">
       <div class="chart-card">
@@ -268,9 +288,35 @@
         <canvas id="aiChart"></canvas>
       </div>
       <div class="chart-card">
-        <h3 id="flowChartTitle">Flow Efficiency</h3>
-        <p id="flowChartSub">Cycle time as a share of lead time (%) — higher means less time spent waiting · rolling 8 weeks</p>
-        <canvas id="flowChart"></canvas>
+        <h3 id="focusIntegrityChartTitle">Focus Integrity</h3>
+        <p id="focusIntegrityChartSub">Distinct Epics with active WIP right now — fewer means less context-switching</p>
+        <canvas id="focusIntegrityChart"></canvas>
+      </div>
+      <div class="chart-card" id="teamPulseCard">
+        <h3>Team Pulse</h3>
+        <p>Human signal — sentiment &amp; sustainability. No Jira data source; entered by the Delivery Manager, saved to a shared Google Sheet.</p>
+        <div class="pulse-criteria">
+          <div class="pulse-criteria-label">What to weigh before rating</div>
+          <ul>
+            <li>Team energy &amp; morale — engaged, or running on fumes?</li>
+            <li>Sustainable pace — late nights, weekend work, or burnout signs?</li>
+            <li>Confidence in the current plan — does the team believe the work is achievable?</li>
+            <li>Psychological safety — are blockers and disagreement raised openly?</li>
+            <li>Team friction — interpersonal or cross-team tension affecting delivery?</li>
+          </ul>
+        </div>
+        <div class="pulse-form">
+          <select id="pulseProject"></select>
+          <select id="pulseRating">
+            <option value="green">🟢 Green — healthy</option>
+            <option value="yellow">🟡 Yellow — watch</option>
+            <option value="red">🔴 Red — at risk</option>
+          </select>
+          <input type="text" id="pulseSubmittedBy" placeholder="Your name" />
+          <textarea id="pulseNotes" rows="3" placeholder="What's driving this rating? (optional notes)"></textarea>
+          <button id="pulseSaveBtn" onclick="saveTeamPulse()">Save</button>
+        </div>
+        <div class="pulse-current" id="pulseCurrent"></div>
       </div>
     </div>
   </div>
@@ -311,6 +357,129 @@ function makeChart(id, config) {
 }
 function fmt(n, suffix = '') { return (n === null || n === undefined) ? '—' : `${n}${suffix}`; }
 
+// Team Pulse: the one signal with no Jira data source (see Darius's Slack
+// note that it's "DM-observation-led feeding an aggregator"). Backed by a
+// shared Google Sheet through a small Apps Script Web App -- see
+// scripts/team-pulse-apps-script.gs for the code to paste into Google's Apps
+// Script editor and the one-time setup steps. Paste the deployed Web App URL
+// below once that's done (in BOTH index.html copies you maintain); until
+// then, entries fall back to this browser's localStorage and data.json's
+// manual.teamPulse, so the card still works, just without cross-device sync.
+const TEAM_PULSE_APPS_SCRIPT_URL = 'https://script.google.com/a/macros/apspayroll.com/s/AKfycbwxnWyDXOTmYLVJVkLplw1SjcVoXc-SjFiRiqrlPD2GraWCLYPDi_9LCP-kwK_4ToLJ/exec'; // e.g. 'https://script.google.com/macros/s/AKfycb.../exec'
+const PULSE_LABELS = { green: '🟢 Green — healthy', yellow: '🟡 Yellow — watch', red: '🔴 Red — at risk' };
+
+function pulseStorageKey(projectKey) { return `deliveryDashboard.teamPulse.${projectKey}`; }
+
+function loadTeamPulseFromStorage(projectKey) {
+  try {
+    const raw = localStorage.getItem(pulseStorageKey(projectKey));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveTeamPulseToStorage(projectKey, entry) {
+  try { localStorage.setItem(pulseStorageKey(projectKey), JSON.stringify(entry)); } catch {}
+}
+
+function renderTeamPulseCurrent(entry, sourceLabel) {
+  const el = document.getElementById('pulseCurrent');
+  if (!el) return;
+  if (!entry || !entry.rating) {
+    el.innerHTML = `<p style="color:var(--muted)">No pulse entered yet${sourceLabel ? ` · ${sourceLabel}` : ''}.</p>`;
+    return;
+  }
+  const when = entry.savedAt || (entry.date && entry.time ? `${entry.date} ${entry.time}` : '');
+  el.innerHTML = `
+    <div class="pulse-chip ${entry.rating}">${PULSE_LABELS[entry.rating] || entry.rating}</div>
+    ${entry.notes ? `<p style="margin-top:8px">${entry.notes}</p>` : ''}
+    <p style="color:var(--muted);font-size:11px;margin-top:6px">${when ? `Saved ${when}` : ''}${entry.submittedBy ? ` by ${entry.submittedBy}` : ''}${sourceLabel ? ` · ${sourceLabel}` : ''}</p>
+  `;
+}
+
+let CURRENT_PULSE_PROJECT = 'All';
+
+// Saves to the shared Google Sheet (via the Apps Script Web App) when
+// TEAM_PULSE_APPS_SCRIPT_URL is configured; always also writes a same-browser
+// localStorage copy as an instant, offline-safe fallback. Content-Type is set
+// to text/plain (not application/json) specifically to avoid a CORS preflight
+// request -- Apps Script Web Apps only implement doGet/doPost, not doOptions,
+// so a preflight would fail even though the actual POST would have worked.
+async function saveTeamPulse() {
+  const project = document.getElementById('pulseProject').value || 'All';
+  const rating = document.getElementById('pulseRating').value;
+  const notes = document.getElementById('pulseNotes').value.trim();
+  const submittedBy = document.getElementById('pulseSubmittedBy').value.trim();
+  const entry = { project, rating, notes, submittedBy, savedAt: new Date().toLocaleString() };
+
+  try { localStorage.setItem('deliveryDashboard.teamPulse.submittedBy', submittedBy); } catch {}
+  saveTeamPulseToStorage(project, entry);
+  renderTeamPulseCurrent(entry, 'saving to Google Sheet…');
+
+  if (!TEAM_PULSE_APPS_SCRIPT_URL) {
+    renderTeamPulseCurrent(entry, 'saved in this browser only — Google Sheet not connected yet');
+    return;
+  }
+  try {
+    const res = await fetch(TEAM_PULSE_APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ project, rating, notes, submittedBy }),
+    });
+    const saved = await res.json();
+    saveTeamPulseToStorage(project, saved);
+    renderTeamPulseCurrent(saved, 'saved to shared Google Sheet');
+  } catch {
+    renderTeamPulseCurrent(entry, 'saved in this browser only — could not reach Google Sheet');
+  }
+}
+
+// Team Pulse now tracks whichever project is selected in the main dropdown
+// (like every other Five Signals chart), via the projectKey passed in from
+// render(). "All" reads/writes the org-wide entry; a project key reads/writes
+// that project's own entry. The Apps Script's doGet walks the Sheet backwards
+// for the most recent row matching the requested project, falling back to the
+// most recent "All" row, then to the most recent row of any kind.
+async function initTeamPulse(projectKey) {
+  CURRENT_PULSE_PROJECT = projectKey || 'All';
+  const projectSel = document.getElementById('pulseProject');
+  if (projectSel) projectSel.value = CURRENT_PULSE_PROJECT;
+  const nameField = document.getElementById('pulseSubmittedBy');
+  if (nameField && !nameField.value) {
+    try { nameField.value = localStorage.getItem('deliveryDashboard.teamPulse.submittedBy') || ''; } catch {}
+  }
+
+  if (TEAM_PULSE_APPS_SCRIPT_URL) {
+    try {
+      const res = await fetch(`${TEAM_PULSE_APPS_SCRIPT_URL}?project=${encodeURIComponent(CURRENT_PULSE_PROJECT)}`, { cache: 'no-store' });
+      const remote = await res.json();
+      if (remote && remote.rating) {
+        document.getElementById('pulseRating').value = remote.rating;
+        document.getElementById('pulseNotes').value = remote.notes || '';
+        renderTeamPulseCurrent(remote, 'from shared Google Sheet');
+      } else {
+        renderTeamPulseCurrent(null, 'from shared Google Sheet');
+      }
+      return;
+    } catch {
+      // Sheet configured but unreachable (offline, URL typo, etc.) -- fall
+      // through to the local/data.json fallback below.
+    }
+  }
+
+  const stored = loadTeamPulseFromStorage(CURRENT_PULSE_PROJECT);
+  let initial = stored;
+  if (!initial && CURRENT_PULSE_PROJECT === 'All' && DATA && DATA.manual && DATA.manual.teamPulse) {
+    initial = DATA.manual.teamPulse;
+  }
+  if (initial) {
+    if (initial.rating) document.getElementById('pulseRating').value = initial.rating;
+    if (initial.notes) document.getElementById('pulseNotes').value = initial.notes;
+  }
+  renderTeamPulseCurrent(initial, TEAM_PULSE_APPS_SCRIPT_URL ? 'could not reach Google Sheet' : 'Google Sheet not connected yet');
+}
+
 let DATA = null;
 
 function onProjectChange() {
@@ -347,6 +516,12 @@ async function load() {
   sel.innerHTML = '<option value="__all__">All Projects</option>' +
     projects.map(p => `<option value="${p.key}">${p.key}</option>`).join('');
 
+  const pulseSel = document.getElementById('pulseProject');
+  if (pulseSel) {
+    pulseSel.innerHTML = '<option value="All">All Projects</option>' +
+      projects.map(p => `<option value="${p.key}">${p.key}</option>`).join('');
+  }
+
   render('__all__');
 }
 
@@ -360,6 +535,7 @@ function render(selection) {
     const p = projects.find(pr => pr.key === selection);
     if (p) renderSingleProject(p);
   }
+  initTeamPulse(selection === '__all__' ? 'All' : selection);
 }
 
 function renderAllProjects(projects) {
@@ -485,12 +661,15 @@ function renderAllProjects(projects) {
     options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
   });
 
-  document.getElementById('flowChartTitle').textContent = 'Flow Efficiency';
-  document.getElementById('flowChartSub').textContent = 'Cycle time as a share of lead time (%) — higher means less time spent waiting · rolling 8 weeks';
-  makeChart('flowChart', {
+  document.getElementById('focusIntegrityChartTitle').textContent = 'Focus Integrity';
+  document.getElementById('focusIntegrityChartSub').textContent = 'Distinct Epics with active WIP right now, per project — fewer means less context-switching';
+  makeChart('focusIntegrityChart', {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Flow Efficiency %', data: projects.map(p => p.flowEfficiencyPct), backgroundColor: '#14b8a6' }] },
-    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
+    data: { labels, datasets: [{ label: 'Active Epics', data: projects.map(p => p.focusIntegrityActiveEpics), backgroundColor: '#eab308' }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => {
+      const p = projects[ctx.dataIndex];
+      return `${p.focusIntegrityActiveEpics ?? 0} active of ${p.focusIntegrityTotalEpics ?? 0} open epics`;
+    } } } }, scales: { y: { beginAtZero: true } } }
   });
 }
 
@@ -725,12 +904,17 @@ function renderSingleProject(p) {
     options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
   });
 
-  document.getElementById('flowChartTitle').textContent = `${p.key} — Flow Efficiency Trend`;
-  document.getElementById('flowChartSub').textContent = 'Cycle time as a share of lead time (%), per week (8 weeks)';
-  makeChart('flowChart', {
-    type: 'line',
-    data: { labels, datasets: [{ label: 'Flow Efficiency %', data: weekly.map(w => w.flowEfficiencyPct), borderColor: '#14b8a6', backgroundColor: '#14b8a6', tension: 0.3 }] },
-    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
+  // Focus Integrity is a current snapshot (like WIP/Dependencies), not a
+  // weekly-bucketed metric, so single-project view just shows this project's
+  // one current bar rather than an 8-week trend line.
+  document.getElementById('focusIntegrityChartTitle').textContent = `${p.key} — Focus Integrity`;
+  document.getElementById('focusIntegrityChartSub').textContent = 'Distinct Epics with active WIP right now';
+  makeChart('focusIntegrityChart', {
+    type: 'bar',
+    data: { labels: [p.key], datasets: [{ label: 'Active Epics', data: [p.focusIntegrityActiveEpics], backgroundColor: '#eab308' }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: () =>
+      `${p.focusIntegrityActiveEpics ?? 0} active of ${p.focusIntegrityTotalEpics ?? 0} open epics`
+    } } }, scales: { y: { beginAtZero: true } } }
   });
 }
 
