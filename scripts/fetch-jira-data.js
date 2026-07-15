@@ -64,8 +64,16 @@ const TOKEN = process.env.JIRA_API_TOKEN;
 // comment -- JQL can filter worklogAuthor natively, but there's no equivalent
 // "commented by" clause), set this to that account's Jira accountId (not
 // email) as a GitHub Actions secret, e.g. CLAUDE_BOT_ACCOUNT_ID. When set,
-// AI Leverage switches from the current "Blocked"-style component-tag guess
+// AI Leverage switches from the current component-tag/text-marker guess
 // to an objective worklogAuthor JQL query. When unset, behavior is unchanged.
+//
+// Until that account exists, AI Leverage is a best-effort guess made of two
+// signals, either of which counts an issue as AI-touched: (1) an "AI"/
+// "Claude" component tag, or (2) description text left by this Jira site's
+// internal "aps-workflow" tooling -- an "Execution checklist ... Claude
+// sessions executing this ticket" line, or a "_aps-workflow create-ticket
+// vX.Y.Z_" footer tag. Confirmed present on real tickets via a live JQL
+// text search (e.g. EMP-935, EXP-964) on 2026-07-15. See isAiWorkflowTagged().
 const CLAUDE_BOT_ACCOUNT_ID = process.env.CLAUDE_BOT_ACCOUNT_ID || null;
 
 if (!BASE_URL || !EMAIL || !TOKEN) {
@@ -150,6 +158,30 @@ function round1(n) {
 
 function isAiComponent(name) {
   return /claude|ai/i.test(name || "");
+}
+
+// Second AI Leverage signal, alongside the component-tag guess: this Jira
+// site's tickets are frequently created and/or executed through an internal
+// "aps-workflow" tool, and tickets touched by that pipeline leave textual
+// fingerprints in the description -- an "Execution checklist" line reading
+// "Claude sessions executing this ticket: read and update this file as work
+// progresses", and/or a "_aps-workflow create-ticket vX.Y.Z_" footer tag.
+// Confirmed present on real tickets (e.g. EMP-935, EXP-964) via a live JQL
+// text search on 2026-07-15. Neither marker requires a dedicated bot account
+// or component tag to exist, so this catches AI-touched work the other two
+// signals miss. issue.fields.description comes back from the Jira API as an
+// Atlassian Document Format (ADF) object, not plain text, so it has to be
+// flattened first.
+const AI_WORKFLOW_TEXT_PATTERN = /claude session|_aps-workflow|aps-workflow create-ticket/i;
+function adfToText(node) {
+  if (!node) return "";
+  if (typeof node === "string") return node;
+  let text = node.text || "";
+  if (Array.isArray(node.content)) text += " " + node.content.map(adfToText).join(" ");
+  return text;
+}
+function isAiWorkflowTagged(description) {
+  return AI_WORKFLOW_TEXT_PATTERN.test(adfToText(description));
 }
 
 /** Objective AI Leverage signal, once a standard agent account exists: which
@@ -252,7 +284,9 @@ function analyzeIssue(issue, statusCategoryByName, aiWorkedKeys) {
   if (resolved) leadTimeDays = (resolved - created) / 86400000;
 
   const hadTransition = histories.length > 0;
-  const isAiTagged = aiWorkedKeys ? aiWorkedKeys.has(issue.key) : (issue.fields.components || []).some((c) => isAiComponent(c.name));
+  const isAiTagged = aiWorkedKeys
+    ? aiWorkedKeys.has(issue.key)
+    : (issue.fields.components || []).some((c) => isAiComponent(c.name)) || isAiWorkflowTagged(issue.fields.description);
 
   return { cycleTimeDays, leadTimeDays, regressed: regressions > 0, hadTransition, isAiTagged, resolved };
 }
@@ -303,6 +337,31 @@ function weekLabel(startMs, endMs) {
   return `${fmt(startMs)}–${fmt(endMs)}`;
 }
 
+/** Focus Integrity is a live snapshot ("Epics with active WIP right now"),
+ * not something Jira lets us reconstruct retroactively -- there's no JQL for
+ * "how many epics had active children as of 3 weeks ago." So instead of
+ * computing a trend, we accumulate one real snapshot per Action run into
+ * `history` (see analyzeProject) and bucket that accumulated history into the
+ * same 8 weekly windows used everywhere else on the dashboard, taking the
+ * latest known value as of each week's end. Early weeks will show gaps (null)
+ * until enough real runs have accumulated after this feature ships -- that's
+ * expected, not a bug. */
+function focusIntegrityWeeklySeries(history, now) {
+  const sorted = [...history].sort((a, b) => new Date(a.recordedAt) - new Date(b.recordedAt));
+  const series = [];
+  for (let i = 0; i < 8; i++) {
+    const weeksAgo = 7 - i; // matches the same convention as the `weekly` array below
+    const endMs = now - weeksAgo * WEEK_MS;
+    let value = null;
+    for (const h of sorted) {
+      if (new Date(h.recordedAt).getTime() <= endMs) value = h.activeEpics;
+      else break;
+    }
+    series.push(value);
+  }
+  return series;
+}
+
 /** Each project's active (not-yet-Done) Epics, with % of child work items
  * (Stories/Tasks/Bugs under that Epic via the "parent" field) that are Done.
  * Verified against a real example (INV-651): parent = INV-651 returns its 10
@@ -337,7 +396,7 @@ async function analyzeEpics(key) {
   return results;
 }
 
-async function analyzeProject(key, statusCategoryByName) {
+async function analyzeProject(key, statusCategoryByName, existingHistory) {
   const now = Date.now();
 
   const epics = await analyzeEpics(key);
@@ -349,6 +408,14 @@ async function analyzeProject(key, statusCategoryByName) {
   const focusIntegrityActiveEpics = epics.filter((e) => e.childActive > 0).length;
   const focusIntegrityTotalEpics = epics.length;
 
+  // Accumulate today's real snapshot onto whatever history main() read back
+  // from the existing data.json, trimmed to the rolling window -- this is
+  // what turns the single "Epics with active WIP right now" number into a
+  // genuine 8-week trend over time (see focusIntegrityWeeklySeries() above).
+  const focusIntegrityHistory = [...(existingHistory || []), { recordedAt: new Date(now).toISOString(), activeEpics: focusIntegrityActiveEpics }]
+    .filter((h) => now - new Date(h.recordedAt).getTime() <= WINDOW_DAYS * 86400000);
+  const focusIntegrityWeekly = focusIntegrityWeeklySeries(focusIntegrityHistory, now);
+
   // WIP snapshot: all currently open issues, grouped by status (not time-windowed).
   // Also pull issuelinks so we can surface real "blocked by" dependencies, not just a
   // "Blocked" component guess. Jira embeds a minimal fields object (key, summary, status)
@@ -357,7 +424,7 @@ async function analyzeProject(key, statusCategoryByName) {
   // plain `statusCategory != Done` filter would silently exclude it -- add it
   // back explicitly so finished-but-not-yet-shipped work still shows up (in
   // the "Done" WIP lane, per STATUS_CANONICAL_MAP).
-  const wipIssues = await searchAll(`project = ${key} AND (statusCategory != Done OR status = "Ready for Release")`, ["status", "summary", "issuelinks", "components", "created"]);
+  const wipIssues = await searchAll(`project = ${key} AND (statusCategory != Done OR status = "Ready for Release")`, ["status", "summary", "issuelinks", "components", "created", "issuetype"]);
   const wipByStatus = {};
   for (const lane of WIP_LANES) wipByStatus[lane] = 0;
   let otherWipCount = 0;
@@ -381,6 +448,7 @@ async function analyzeProject(key, statusCategoryByName) {
     key: issue.key,
     summary: issue.fields.summary,
     status: issue.fields.status.name,
+    type: issue.fields.issuetype ? issue.fields.issuetype.name : null,
     ageDays: round1((now - new Date(issue.fields.created).getTime()) / 86400000),
   }));
   const oldestWipAgeDays = wipWithAge.length ? Math.max(...wipWithAge.map((w) => w.ageDays)) : null;
@@ -436,7 +504,7 @@ async function analyzeProject(key, statusCategoryByName) {
   // Rolling 8-week window, relative to right now.
   const windowIssues = await searchAll(
     `project = ${key} AND resolutiondate >= -${WINDOW_DAYS}d`,
-    ["created", "resolutiondate", "components", "status"],
+    ["created", "resolutiondate", "components", "status", "description"],
     "changelog"
   );
   const aiWorkedKeys = await aiWorkedIssueKeys(key);
@@ -480,6 +548,8 @@ async function analyzeProject(key, statusCategoryByName) {
     epics,
     focusIntegrityActiveEpics,
     focusIntegrityTotalEpics,
+    focusIntegrityHistory,
+    focusIntegrityWeekly,
     wipByStatus,
     wipTotal: wipIssues.length,
     dependencies,
@@ -505,27 +575,36 @@ async function analyzeProject(key, statusCategoryByName) {
 async function main() {
   const statusCategoryByName = await fetchStatusCategoryMap();
 
+  // This script overwrites data.json every run (every 3 hours, per the GitHub
+  // Action). Read whatever's already there once, up front, for two reasons:
+  // (1) hand-maintained "manual" fields (Focus Integrity note, Team Pulse
+  // fallback) need to survive being overwritten, and (2) each project's
+  // accumulated focusIntegrityHistory needs to be carried forward into this
+  // run so the rolling 8-week trend keeps building instead of resetting to
+  // a single point every time the Action runs.
+  const fs = require("fs");
+  let existingManual = {};
+  let existingProjectsByKey = {};
+  try {
+    const existingData = JSON.parse(fs.readFileSync("data.json", "utf8"));
+    existingManual = existingData.manual || {};
+    for (const p of existingData.projects || []) {
+      if (p && p.key) existingProjectsByKey[p.key] = p;
+    }
+  } catch {
+    // No existing data.json (first run) -- fall back to empty defaults below.
+  }
+
   const projects = [];
   for (const key of PROJECTS) {
     console.log(`Analyzing ${key}...`);
     try {
-      projects.push(await analyzeProject(key, statusCategoryByName));
+      const priorHistory = (existingProjectsByKey[key] && existingProjectsByKey[key].focusIntegrityHistory) || [];
+      projects.push(await analyzeProject(key, statusCategoryByName, priorHistory));
     } catch (err) {
       console.error(`Failed to analyze ${key}: ${err.message}`);
       projects.push({ key, error: err.message });
     }
-  }
-
-  // This script overwrites data.json every run (every 3 hours, per the GitHub
-  // Action), which used to wipe out any hand-edited "manual" fields. Read
-  // whatever's already there first so hand-maintained data -- Focus Integrity
-  // and Team Pulse -- survives.
-  const fs = require("fs");
-  let existingManual = {};
-  try {
-    existingManual = JSON.parse(fs.readFileSync("data.json", "utf8")).manual || {};
-  } catch {
-    // No existing data.json (first run) -- fall back to empty defaults below.
   }
 
   const out = {
