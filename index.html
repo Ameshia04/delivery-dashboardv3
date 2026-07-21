@@ -117,19 +117,58 @@
     .pulse-chip.green { background: #10331f; color: var(--green); }
     .pulse-chip.yellow { background: #3a2f10; color: var(--yellow); }
     .pulse-chip.red { background: #3a1a1a; color: var(--red); }
+    .cs-section { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .cs-heading { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .cs-sub { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .cs-chips { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    #contextSwitchChart { max-height: 140px; margin-bottom: 12px; }
+    .cs-flagged-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; background: var(--surface2); border: 1px solid var(--yellow); border-radius: 8px; padding: 6px 10px; margin-bottom: 6px; font-size: 12px; flex-wrap: wrap; }
+    .cs-flagged-count { color: var(--yellow); font-weight: 700; font-size: 11px; white-space: nowrap; }
+    .cs-flagged-epics { color: var(--muted); font-size: 10px; }
+    .cs-flagged-empty { font-size: 11px; color: var(--muted); padding: 4px 0; }
     #printBtn {
       background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px;
       padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
     }
     #printBtn:hover { border-color: var(--accent); color: var(--accent); }
 
+    /* Dependencies card: List/Diagram toggle + "Build Order" wave-column
+       diagram. Deliberately plain HTML/CSS/SVG (no graph library) so it
+       matches the rest of the dashboard, needs no new script tag, and
+       prints cleanly through the existing @media print rules below --
+       a canvas-based graph library would rasterize poorly on print and
+       fights against forcing clean WAVE 1/2/3 columns with physics-based
+       auto-layout. */
+    .view-toggle { display: flex; gap: 6px; margin-bottom: 12px; }
+    .deps-view-btn {
+      background: var(--surface2); color: var(--muted); border: 1px solid var(--border); border-radius: 6px;
+      padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
+    }
+    .deps-view-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .deps-view-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+    .deps-diagram-scroll { position: relative; overflow-x: auto; padding-bottom: 8px; }
+    .deps-diagram-columns { display: flex; gap: 40px; align-items: flex-start; position: relative; z-index: 1; }
+    .wave-column { display: flex; flex-direction: column; gap: 14px; min-width: 190px; }
+    .wave-column-header {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted);
+      text-align: center; margin-bottom: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+    }
+    .wave-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 12px; }
+    .wave-card.critical { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+    .wave-card-key { font-weight: 700; margin-bottom: 3px; }
+    .wave-card-status { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+    .wave-card-summary { color: var(--muted); line-height: 1.4; }
+    .deps-diagram-svg { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0; }
+    .deps-diagram-note { font-size: 11px; color: var(--muted); margin-top: 14px; }
+
     /* Export PDF: relies on the browser's native print-to-PDF (Ctrl/Cmd+P save
        target), so no extra libraries are needed. This stylesheet reformats the
-       page for that: every tab's content prints (not just the active one), the
-       dark theme switches to a light/printable palette, and interactive-only
-       chrome (tabs, filter, the button itself) is hidden. What prints reflects
-       whichever project is selected at the moment -- it's a snapshot, not a
-       live document. */
+       page for that: only whichever tab is currently active on screen prints
+       (the normal .tab-content/.tab-content.active display rule already
+       handles that -- no override needed here), the dark theme switches to a
+       light/printable palette, and interactive-only chrome (tabs, filter, the
+       button itself) is hidden. What prints reflects whichever tab and project
+       are selected at the moment -- it's a snapshot, not a live document. */
     @media print {
       :root {
         --bg: #ffffff; --surface: #ffffff; --surface2: #f3f4f6; --border: #d1d5db;
@@ -138,12 +177,11 @@
       body { background: #fff; }
       header { position: static; border-bottom: 2px solid #111827; }
       .live-badge { border-color: #111827; color: #111827; background: #fff; }
-      .tabs, .overview-filter-row, #printBtn { display: none !important; }
+      .tabs, .overview-filter-row, #printBtn, .view-toggle { display: none !important; }
       main { padding: 0 8px; max-width: none; }
-      .tab-content { display: block !important; margin-bottom: 28px; page-break-after: always; }
-      .tab-content:last-child { page-break-after: auto; }
       .chart-card, .card, .project-card { break-inside: avoid; }
       canvas { max-height: 260px; }
+      .deps-diagram-scroll { overflow: visible !important; }
     }
   </style>
 </head>
@@ -198,19 +236,26 @@
       <p id="loopbackChartSub">% of transitioned issues that regressed to an earlier stage · rolling 8 weeks</p>
       <canvas id="loopbackChart"></canvas>
     </div>
-    <div class="chart-card">
+    <div class="chart-card" id="depsCard">
       <h3 id="depsTitle">Dependencies <span class="caret" onclick="toggleCollapse('depsBody', this)">▾</span></h3>
       <p id="depsSub">Ticket-to-ticket dependencies, from Jira's "Blocks" linked work items</p>
+      <div class="view-toggle" id="depsViewToggle">
+        <button class="deps-view-btn active" data-mode="list" onclick="setDepsView('list')">List</button>
+        <button class="deps-view-btn" data-mode="diagram" onclick="setDepsView('diagram')">Diagram</button>
+      </div>
       <div id="depsBody">
-        <div class="filter-row">
-          <input type="text" id="depsFilterInput" placeholder="Filter by blocker (e.g. INV or INV-935)" oninput="onDepsFilterChange()" />
+        <div id="depsListView">
+          <div class="filter-row">
+            <input type="text" id="depsFilterInput" placeholder="Filter by blocker (e.g. INV or INV-935)" oninput="onDepsFilterChange()" />
+          </div>
+          <div class="deps-summary" id="depsSummary"></div>
+          <table class="flow-table" id="depsTable">
+            <thead><tr><th>Blocker</th><th>Status</th><th></th><th>Blocked</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <p id="depsEmpty" style="display:none;margin-top:8px">No open dependencies right now 🎉</p>
         </div>
-        <div class="deps-summary" id="depsSummary"></div>
-        <table class="flow-table" id="depsTable">
-          <thead><tr><th>Blocker</th><th>Status</th><th></th><th>Blocked</th><th>Status</th></tr></thead>
-          <tbody></tbody>
-        </table>
-        <p id="depsEmpty" style="display:none;margin-top:8px">No open dependencies right now 🎉</p>
+        <div id="depsDiagramView" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -242,7 +287,7 @@
       </div>
       <div class="project-grid" id="wipGrid"></div>
     </div>
-    <div class="chart-card">
+    <div class="chart-card" id="agingCard">
       <h3 id="agingTitle">Aging WIP <span class="caret" onclick="toggleCollapse('agingBody', this)">▾</span></h3>
       <p id="agingSub">Open issues ranked by age (days since created) — surfaces what's been sitting the longest before it quietly drags the cycle-time average up. Age is a proxy for "time in flight," not time in the current column.</p>
       <div id="agingBody">
@@ -293,6 +338,15 @@
         <h3 id="focusIntegrityChartTitle">Focus Integrity</h3>
         <p id="focusIntegrityChartSub">Distinct Epics with active WIP right now — fewer means less context-switching</p>
         <canvas id="focusIntegrityChart"></canvas>
+        <div class="cs-section">
+          <div class="cs-heading">Context switching <span class="caret" onclick="toggleCollapse('csBody', this)">▾</span></div>
+          <div id="csBody">
+            <p class="cs-sub" id="csSub">Distinct Epics touched per assignee, weekly · reconstructed from Jira's changelog, not a live snapshot</p>
+            <div class="cs-chips" id="csChips"></div>
+            <canvas id="contextSwitchChart"></canvas>
+            <div id="csFlaggedList"></div>
+          </div>
+        </div>
       </div>
       <div class="chart-card" id="teamPulseCard">
         <h3>Team Pulse</h3>
@@ -337,6 +391,12 @@ function showTab(name, event) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   event.currentTarget.classList.add('active');
+  // The dependency diagram's arrows are measured via getBoundingClientRect(),
+  // which returns zero-size rects while the Overview tab is display:none --
+  // so redraw once it's visible again, on whichever project is currently shown.
+  if (name === 'overview' && DEPS_VIEW_MODE === 'diagram') {
+    requestAnimationFrame(() => drawDepsDiagramArrows(LAST_DEPS_DIAGRAM.edges, LAST_DEPS_DIAGRAM.criticalEdges));
+  }
 }
 
 // Generic collapse/expand toggle for a section body, driven by a caret span
@@ -407,15 +467,46 @@ function renderTeamPulseCurrent(entry, sourceLabel) {
 
 let CURRENT_PULSE_PROJECT = 'All';
 
+// No live database is connected (Team Pulse's Google Sheet integration is
+// blocked on a Workspace admin policy -- see scripts/team-pulse-apps-script.gs
+// for the full story), so every Save also downloads the entry as a .csv --
+// a real, shareable record the Delivery Manager can attach to an email or
+// drop in a shared folder, instead of the data only living in this one
+// browser's localStorage.
+function downloadTeamPulseCsv(entry) {
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const header = ['Date', 'Time', 'Project', 'Rating', 'Notes', 'Submitted By'];
+  const now = new Date();
+  const row = [
+    now.toLocaleDateString(),
+    now.toLocaleTimeString(),
+    entry.project,
+    entry.rating,
+    entry.notes,
+    entry.submittedBy,
+  ];
+  const csv = header.map(esc).join(',') + '\n' + row.map(esc).join(',') + '\n';
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `team-pulse-${entry.project}-${now.toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // Saves to the shared Google Sheet (via the Apps Script Web App) when
 // TEAM_PULSE_APPS_SCRIPT_URL is configured; always also writes a same-browser
-// localStorage copy as an instant, offline-safe fallback. This is a GET
-// request with the data as query params (?action=save&...), not a POST with
-// a body -- Google Apps Script Web Apps redirect script.google.com requests
-// to script.googleusercontent.com, and fetch() dropped the POST body when
-// following that redirect, so doPost never actually received any data. A GET
-// has no body to lose, which is why saving is routed this way; see
-// scripts/team-pulse-apps-script.gs for the matching server-side change.
+// localStorage copy and downloads a .csv, since there's currently no live
+// database this can rely on. This is a GET request with the data as query
+// params (?action=save&...), not a POST with a body -- Google Apps Script
+// Web Apps redirect script.google.com requests to script.googleusercontent.com,
+// and fetch() dropped the POST body when following that redirect, so doPost
+// never actually received any data. A GET has no body to lose, which is why
+// saving is routed this way; see scripts/team-pulse-apps-script.gs for the
+// matching server-side change.
 async function saveTeamPulse() {
   const project = document.getElementById('pulseProject').value || 'All';
   const rating = document.getElementById('pulseRating').value;
@@ -425,20 +516,21 @@ async function saveTeamPulse() {
 
   try { localStorage.setItem('deliveryDashboard.teamPulse.submittedBy', submittedBy); } catch {}
   saveTeamPulseToStorage(project, entry);
-  renderTeamPulseCurrent(entry, 'saving to Google Sheet…');
+  downloadTeamPulseCsv(entry);
 
   if (!TEAM_PULSE_APPS_SCRIPT_URL) {
-    renderTeamPulseCurrent(entry, 'saved in this browser only — Google Sheet not connected yet');
+    renderTeamPulseCurrent(entry, 'saved in this browser + downloaded as .csv (no shared database connected)');
     return;
   }
+  renderTeamPulseCurrent(entry, 'saving to Google Sheet…');
   try {
     const params = new URLSearchParams({ action: 'save', project, rating, notes, submittedBy });
     const res = await fetch(`${TEAM_PULSE_APPS_SCRIPT_URL}?${params.toString()}`, { cache: 'no-store' });
     const saved = await res.json();
     saveTeamPulseToStorage(project, saved);
-    renderTeamPulseCurrent(saved, 'saved to shared Google Sheet');
+    renderTeamPulseCurrent(saved, 'saved to shared Google Sheet + downloaded as .csv');
   } catch {
-    renderTeamPulseCurrent(entry, 'saved in this browser only — could not reach Google Sheet');
+    renderTeamPulseCurrent(entry, 'saved in this browser + downloaded as .csv (could not reach Google Sheet)');
   }
 }
 
@@ -562,14 +654,14 @@ function renderAllProjects(projects) {
   const avgLead = leadTimes.length ? (leadTimes.reduce((a,b)=>a+b,0)/leadTimes.length).toFixed(1) : '—';
   const totalWip = projects.reduce((a,p) => a + (p.wipTotal || 0), 0);
   const totalDependencies = dedupeDependencies(projects.flatMap(p => p.dependencies || [])).length;
-  const atRisk = projects.filter(p => p.cycleTimeDays.avg !== null && p.cycleTimeDays.avg > 8).length;
+  const atRisk = projects.filter(p => p.riskStatus === 'At Risk').length;
 
   document.getElementById('overviewCards').innerHTML = `
     <div class="card blue"><div class="card-label">Avg Cycle Time</div><div class="card-value">${avgCycle}<span style="font-size:14px;font-weight:400"> d</span></div><div class="card-sub">Rolling 8 weeks</div></div>
     <div class="card purple"><div class="card-label">Avg Lead Time</div><div class="card-value">${avgLead}<span style="font-size:14px;font-weight:400"> d</span></div><div class="card-sub">Created → Done</div></div>
     <div class="card"><div class="card-label">Total WIP</div><div class="card-value">${totalWip}</div><div class="card-sub">Open issues, all projects</div></div>
     <div class="card yellow"><div class="card-label">Dependencies</div><div class="card-value">${totalDependencies}</div><div class="card-sub">Open "Blocks" links</div></div>
-    <div class="card red"><div class="card-label">Projects at Risk</div><div class="card-value">${atRisk}</div><div class="card-sub">Avg cycle time &gt; 8 days</div></div>
+    <div class="card red"><div class="card-label">Projects at Risk</div><div class="card-value">${atRisk}</div><div class="card-sub">Missing their own 85% SLE this week</div></div>
   `;
 
   document.getElementById('cycleTimeChartTitle').textContent = 'Cycle Time by Project';
@@ -597,14 +689,17 @@ function renderAllProjects(projects) {
     } } } }, scales: { y: { beginAtZero: true, max: 100 } } }
   });
 
-  // Dependencies — combined across all projects
-  renderDependencies(projects.flatMap(p => p.dependencies || []));
+  // Dependencies, Aging WIP, and Team Pulse only show for a single selected
+  // project, not the All Projects view -- a cross-project Dependencies/Aging
+  // WIP list gets noisy fast, and Team Pulse is inherently a per-project (or
+  // org-wide-as-its-own-entry) manual signal, not something to blend across
+  // projects.
+  document.getElementById('depsCard').style.display = 'none';
+  document.getElementById('agingCard').style.display = 'none';
+  document.getElementById('teamPulseCard').style.display = 'none';
 
   // Epics only show for a single selected project, not the All Projects view.
   document.getElementById('portfolioEpicsCard').style.display = 'none';
-
-  // Aging WIP — cross-project, so show the Project column
-  renderAgingWip(projects.flatMap(p => (p.agingWipIssues || []).map(w => ({ ...w, project: p.key }))), true);
   {
     const ages = projects.map(p => p.oldestWipAgeDays).filter(v => v !== null && v !== undefined);
     renderAgingSummary(
@@ -641,7 +736,7 @@ function renderAllProjects(projects) {
     <div class="project-card">
       <div class="project-header"><div class="project-name">${p.key}</div><div class="project-key">${p.wipTotal} WIP</div></div>
       <div class="project-stat-row">
-        <div><div class="p-stat-val" style="color:${p.cycleTimeDays.avg > 8 ? 'var(--red)' : 'var(--text)'}">${fmt(p.cycleTimeDays.avg)}</div><div class="p-stat-lbl">Cycle (d)</div></div>
+        <div><div class="p-stat-val" style="color:${p.riskStatus === 'At Risk' ? 'var(--red)' : 'var(--text)'}">${fmt(p.cycleTimeDays.avg)}</div><div class="p-stat-lbl">Cycle (d)</div></div>
         <div><div class="p-stat-val">${fmt(p.leadTimeDays.avg)}</div><div class="p-stat-lbl">Lead (d)</div></div>
         <div><div class="p-stat-val">${fmt(p.qualityLoopbackRatePct,'%')}</div><div class="p-stat-lbl">Loop-back (${p.qualityLoopbackCount ?? 0}/${p.qualityLoopbackSampleSize ?? 0})</div></div>
         <div><div class="p-stat-val" style="color:${p.dependencyCount > 0 ? 'var(--yellow)' : 'var(--green)'}">${p.dependencyCount ?? 0}</div><div class="p-stat-lbl">Dependencies</div></div>
@@ -685,6 +780,21 @@ function renderAllProjects(projects) {
       return `${p.focusIntegrityActiveEpics ?? 0} active of ${p.focusIntegrityTotalEpics ?? 0} open epics`;
     } } } }, scales: { y: { beginAtZero: true } } }
   });
+
+  // Context switching (all-projects view): pointwise-average each project's
+  // weekly series, and pool every project's flagged assignees into one list
+  // tagged with which project they were flagged in. Week labels are shared
+  // across projects (same "now" and window), so borrow them from whichever
+  // project has a weekly series.
+  const csWeeklyAvg = Array.from({ length: 8 }, (_, i) => {
+    const vals = projects.map(p => (p.contextSwitchWeeklyAvg || [])[i]).filter(v => v !== null && v !== undefined);
+    return vals.length ? Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)) : null;
+  });
+  const csThisWeekVals = projects.map(p => p.contextSwitchThisWeekAvg).filter(v => v !== null && v !== undefined);
+  const csThisWeekAvg = csThisWeekVals.length ? Number((csThisWeekVals.reduce((a, b) => a + b, 0) / csThisWeekVals.length).toFixed(1)) : null;
+  const csFlaggedAll = projects.flatMap(p => (p.contextSwitchFlagged || []).map(f => ({ ...f, project: p.key }))).sort((a, b) => b.epicCount - a.epicCount);
+  const csLabelsSource = projects.find(p => p.weekly && p.weekly.length);
+  renderContextSwitching(csWeeklyAvg, csThisWeekAvg, csFlaggedAll, csLabelsSource ? csLabelsSource.weekly.map(w => w.label) : []);
 }
 
 // Dependencies come straight from Jira's "Blocks" linked work items -- each
@@ -746,7 +856,164 @@ function renderDependencies(rows) {
   const deduped = dedupeDependencies(rows);
   LAST_DEPENDENCY_ROWS = deduped;
   renderDepsTable(applyDepsFilter(deduped));
+  if (DEPS_VIEW_MODE === 'diagram') renderDepsDiagram(deduped);
   return deduped;
+}
+
+// Dependency "Build Order" diagram -- List/Diagram toggle for the
+// Dependencies card. DEPS_VIEW_MODE tracks which view is showing;
+// LAST_DEPS_DIAGRAM holds the last-rendered edges/critical-path so arrows can
+// be redrawn (on window resize, or when the Overview tab becomes visible
+// again) without recomputing the whole graph.
+let DEPS_VIEW_MODE = 'list';
+let LAST_DEPS_DIAGRAM = { edges: [], criticalEdges: new Set() };
+
+function setDepsView(mode) {
+  DEPS_VIEW_MODE = mode;
+  document.getElementById('depsListView').style.display = mode === 'list' ? '' : 'none';
+  document.getElementById('depsDiagramView').style.display = mode === 'diagram' ? '' : 'none';
+  document.querySelectorAll('.deps-view-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  if (mode === 'diagram') renderDepsDiagram(LAST_DEPENDENCY_ROWS);
+}
+
+// Computes build-order "waves" from deduped blocker->blocked rows: Wave 1 =
+// issues with no open blockers; each later wave = 1 + the deepest wave among
+// its own blockers (a longest-path-from-source topological level, not just
+// "one step past its nearest blocker" -- an issue blocked by something 3
+// waves deep is itself at least 4 waves deep, even if it also has a
+// same-wave blocker). The "critical path" is the single longest blocker
+// chain in the graph -- a reasonable stand-in for critical-path highlighting
+// using only the dependency data Jira actually gives us (no duration/estimate
+// data to weight edges by).
+function computeDependencyWaves(rows) {
+  const nodes = new Map();
+  const blockersOf = new Map();
+  rows.forEach((r) => {
+    if (!nodes.has(r.blockerKey)) nodes.set(r.blockerKey, { key: r.blockerKey, summary: r.blockerSummary, status: r.blockerStatus });
+    if (!nodes.has(r.blockedKey)) nodes.set(r.blockedKey, { key: r.blockedKey, summary: r.blockedSummary, status: r.blockedStatus });
+    if (!blockersOf.has(r.blockedKey)) blockersOf.set(r.blockedKey, []);
+    blockersOf.get(r.blockedKey).push(r.blockerKey);
+  });
+
+  const waveOf = new Map();
+  function waveFor(key, visiting) {
+    if (waveOf.has(key)) return waveOf.get(key);
+    if (visiting.has(key)) return 0; // defensive cycle guard -- real "Blocks" links shouldn't cycle
+    visiting.add(key);
+    const blockers = blockersOf.get(key) || [];
+    const wave = blockers.length ? 1 + Math.max(...blockers.map((b) => waveFor(b, visiting))) : 0;
+    visiting.delete(key);
+    waveOf.set(key, wave);
+    return wave;
+  }
+  nodes.forEach((_, key) => waveFor(key, new Set()));
+
+  // Walk back from whichever node landed at the deepest wave, always
+  // following the blocker that produced that wave, to trace the longest chain.
+  let deepestKey = null, deepestWave = -1;
+  nodes.forEach((_, key) => { if (waveOf.get(key) > deepestWave) { deepestWave = waveOf.get(key); deepestKey = key; } });
+  const criticalNodes = new Set();
+  const criticalEdges = new Set();
+  let cur = deepestKey;
+  while (cur) {
+    criticalNodes.add(cur);
+    const blockers = blockersOf.get(cur) || [];
+    let next = null, bestWave = -1;
+    blockers.forEach((b) => { if (waveOf.get(b) > bestWave) { bestWave = waveOf.get(b); next = b; } });
+    if (next) criticalEdges.add(`${next}->${cur}`);
+    cur = next;
+  }
+
+  const maxWave = Math.max(0, ...Array.from(waveOf.values()));
+  const columns = Array.from({ length: maxWave + 1 }, () => []);
+  nodes.forEach((n, key) => columns[waveOf.get(key)].push(n));
+  columns.forEach((col) => col.sort((a, b) => a.key.localeCompare(b.key)));
+
+  return { columns, edges: rows.map((r) => ({ from: r.blockerKey, to: r.blockedKey })), criticalEdges, criticalNodes };
+}
+
+function depsStatusColor(status) {
+  const s = (status || '').toLowerCase();
+  if (s.includes('done') || s.includes('release')) return 'var(--green)';
+  if (s.includes('progress') || s.includes('dev') || s.includes('cr') || s.includes('qa') || s.includes('acceptance')) return 'var(--blue)';
+  return 'var(--muted)';
+}
+
+function renderDepsDiagram(rows) {
+  const container = document.getElementById('depsDiagramView');
+  if (!container) return;
+  if (!rows.length) {
+    container.innerHTML = '<p style="color:var(--muted)">No open dependencies right now 🎉</p>';
+    LAST_DEPS_DIAGRAM = { edges: [], criticalEdges: new Set() };
+    return;
+  }
+
+  const { columns, edges, criticalEdges, criticalNodes } = computeDependencyWaves(rows);
+
+  container.innerHTML = `
+    <div class="deps-diagram-scroll">
+      <div class="deps-diagram-columns">
+        ${columns.map((col, i) => `
+          <div class="wave-column">
+            <div class="wave-column-header">Wave ${i + 1}</div>
+            ${col.map((n) => `
+              <div class="wave-card ${criticalNodes.has(n.key) ? 'critical' : ''}" data-key="${n.key}">
+                <div class="wave-card-key">${n.key}</div>
+                <div class="wave-card-status" style="color:${depsStatusColor(n.status)}">${n.status || '—'}</div>
+                <div class="wave-card-summary">${(n.summary || '').slice(0, 70)}</div>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+      </div>
+      <svg class="deps-diagram-svg" id="depsDiagramSvg"></svg>
+    </div>
+    <p class="deps-diagram-note">Wave 1 = issues with no open blockers; each later wave = build order once its own blockers clear. <span style="color:var(--accent)">Highlighted</span> cards/arrows are the longest blocker chain in this project's graph. Diagram shows all open dependencies -- the blocker filter above only applies to the List view.</p>
+  `;
+
+  LAST_DEPS_DIAGRAM = { edges, criticalEdges };
+  requestAnimationFrame(() => drawDepsDiagramArrows(edges, criticalEdges));
+}
+
+// Draws blocker->blocked arrows as an absolutely-positioned SVG overlay sized
+// to the full (unscrolled) content, with card positions measured via
+// getBoundingClientRect() and converted back into the scroll container's own
+// coordinate space. Re-run on resize and whenever the Overview tab becomes
+// visible again, since hidden (display:none) elements report zero-size rects.
+function drawDepsDiagramArrows(edges, criticalEdges) {
+  const svg = document.getElementById('depsDiagramSvg');
+  const scroll = document.querySelector('#depsDiagramView .deps-diagram-scroll');
+  if (!svg || !scroll || !edges || !edges.length) return;
+  const scrollRect = scroll.getBoundingClientRect();
+  if (!scrollRect.width) return; // container hidden right now -- nothing to measure yet
+  svg.setAttribute('width', scroll.scrollWidth);
+  svg.setAttribute('height', scroll.scrollHeight);
+
+  const defs = `
+    <defs>
+      <marker id="depsArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#8892a4" />
+      </marker>
+      <marker id="depsArrowCritical" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#6c63ff" />
+      </marker>
+    </defs>`;
+
+  const paths = edges.map((e) => {
+    const fromEl = scroll.querySelector(`.wave-card[data-key="${e.from}"]`);
+    const toEl = scroll.querySelector(`.wave-card[data-key="${e.to}"]`);
+    if (!fromEl || !toEl) return '';
+    const fr = fromEl.getBoundingClientRect(), tr = toEl.getBoundingClientRect();
+    const x1 = fr.right - scrollRect.left + scroll.scrollLeft;
+    const y1 = fr.top + fr.height / 2 - scrollRect.top + scroll.scrollTop;
+    const x2 = tr.left - scrollRect.left + scroll.scrollLeft;
+    const y2 = tr.top + tr.height / 2 - scrollRect.top + scroll.scrollTop;
+    const isCritical = criticalEdges.has(`${e.from}->${e.to}`);
+    const midX = (x1 + x2) / 2;
+    return `<path d="M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}" fill="none" stroke="${isCritical ? '#6c63ff' : '#8892a4'}" stroke-width="${isCritical ? 2.5 : 1.5}" opacity="${isCritical ? 1 : 0.55}" marker-end="url(#${isCritical ? 'depsArrowCritical' : 'depsArrow'})" />`;
+  }).join('');
+
+  svg.innerHTML = defs + paths;
 }
 
 // Epics: renders a progress bar per Epic showing % of its child work items
@@ -812,6 +1079,36 @@ function renderAgingSummary(oldestAgeDays, agingCount) {
   `;
 }
 
+// Context switching: distinct Epics touched per assignee per week, computed
+// server-side in fetch-jira-data.js from each issue's status changelog --
+// not a live snapshot, so all 8 weeks are real from the very first run
+// (unlike the active-epics-right-now chart above it, which has to accumulate
+// its own history over real time). weeklyAvg is 8 numbers/nulls oldest ->
+// newest; flagged is this week's list of assignees at/above the threshold.
+function renderContextSwitching(weeklyAvg, thisWeekAvg, flagged, labels) {
+  document.getElementById('csChips').innerHTML = `
+    <div class="deps-chip blue"><b>${fmt(thisWeekAvg)}</b>Avg epics/assignee, this week</div>
+    <div class="deps-chip yellow"><b>${flagged.length}</b>Flagged this week</div>
+  `;
+  makeChart('contextSwitchChart', {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'Avg epics/assignee', data: weeklyAvg, borderColor: '#eab308', backgroundColor: '#eab308', tension: 0.3, spanGaps: true }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+  const container = document.getElementById('csFlaggedList');
+  if (!flagged.length) {
+    container.innerHTML = '<div class="cs-flagged-empty">No one crossed the threshold this week.</div>';
+  } else {
+    container.innerHTML = flagged.map(f => `
+      <div class="cs-flagged-row">
+        <div><b>${f.name}</b>${f.project ? ` <span style="color:var(--muted);font-weight:400">(${f.project})</span>` : ''}</div>
+        <div class="cs-flagged-count">${f.epicCount} epics</div>
+        <div class="cs-flagged-epics">${f.epicKeys.join(', ')}</div>
+      </div>
+    `).join('');
+  }
+}
+
 function renderSingleProject(p) {
   const weekly = p.weekly || [];
   const labels = weekly.map(w => w.label);
@@ -821,7 +1118,7 @@ function renderSingleProject(p) {
     <div class="card purple"><div class="card-label">Avg Lead Time</div><div class="card-value">${fmt(p.leadTimeDays.avg)}<span style="font-size:14px;font-weight:400"> d</span></div><div class="card-sub">Created → Done</div></div>
     <div class="card"><div class="card-label">Current WIP</div><div class="card-value">${p.wipTotal}</div><div class="card-sub">Open issues, right now</div></div>
     <div class="card yellow"><div class="card-label">Dependencies</div><div class="card-value">${p.dependencyCount ?? 0}</div><div class="card-sub">Open "Blocks" links</div></div>
-    <div class="card ${p.cycleTimeDays.avg > 8 ? 'red' : 'green'}"><div class="card-label">Risk Status</div><div class="card-value">${p.cycleTimeDays.avg > 8 ? 'At Risk' : 'OK'}</div><div class="card-sub">Cycle time vs 8-day ceiling</div></div>
+    <div class="card ${p.riskStatus === 'At Risk' ? 'red' : 'green'}"><div class="card-label">Risk Status</div><div class="card-value">${p.riskStatus || 'OK'}</div><div class="card-sub">SLE: 85% within ${fmt(p.sle85Days)}d${p.thisWeekSleAdherencePct !== null && p.thisWeekSleAdherencePct !== undefined ? ` · this week ${fmt(p.thisWeekSleAdherencePct,'%')}` : ' · nothing resolved this week yet'}</div></div>
   `;
 
   document.getElementById('cycleTimeChartTitle').textContent = `${p.key} — Cycle & Lead Time Trend`;
@@ -852,6 +1149,11 @@ function renderSingleProject(p) {
     } } } }, scales: { y: { beginAtZero: true, max: 100 } } }
   });
 
+  // Dependencies, Aging WIP, and Team Pulse are single-project-only views
+  // (hidden in renderAllProjects above) -- restore them here.
+  document.getElementById('depsCard').style.display = '';
+  document.getElementById('agingCard').style.display = '';
+  document.getElementById('teamPulseCard').style.display = '';
   renderDependencies(p.dependencies || []);
 
   // Epics: only shown in single-project view, on the Project Portfolio tab.
@@ -886,7 +1188,7 @@ function renderSingleProject(p) {
     <div class="project-card">
       <div class="project-header"><div class="project-name">${p.key}</div><div class="project-key">${p.wipTotal} WIP</div></div>
       <div class="project-stat-row">
-        <div><div class="p-stat-val" style="color:${p.cycleTimeDays.avg > 8 ? 'var(--red)' : 'var(--text)'}">${fmt(p.cycleTimeDays.avg)}</div><div class="p-stat-lbl">Cycle (d)</div></div>
+        <div><div class="p-stat-val" style="color:${p.riskStatus === 'At Risk' ? 'var(--red)' : 'var(--text)'}">${fmt(p.cycleTimeDays.avg)}</div><div class="p-stat-lbl">Cycle (d)</div></div>
         <div><div class="p-stat-val">${fmt(p.leadTimeDays.avg)}</div><div class="p-stat-lbl">Lead (d)</div></div>
         <div><div class="p-stat-val">${fmt(p.qualityLoopbackRatePct,'%')}</div><div class="p-stat-lbl">Loop-back (${p.qualityLoopbackCount ?? 0}/${p.qualityLoopbackSampleSize ?? 0})</div></div>
         <div><div class="p-stat-val" style="color:${p.dependencyCount > 0 ? 'var(--yellow)' : 'var(--green)'}">${p.dependencyCount ?? 0}</div><div class="p-stat-lbl">Dependencies</div></div>
@@ -937,7 +1239,17 @@ function renderSingleProject(p) {
       `${ctx.parsed.y ?? 0} active of ${p.focusIntegrityTotalEpics ?? 0} open epics`
     } } }, scales: { y: { beginAtZero: true } } }
   });
+
+  renderContextSwitching(p.contextSwitchWeeklyAvg || [], p.contextSwitchThisWeekAvg, p.contextSwitchFlagged || [], labels);
 }
+
+// Keep the dependency diagram's arrows aligned to their cards as the window
+// (and therefore the card grid) reflows. Debounced since resize fires rapidly.
+window.addEventListener('resize', () => {
+  if (DEPS_VIEW_MODE !== 'diagram') return;
+  clearTimeout(window.__depsResizeTimer);
+  window.__depsResizeTimer = setTimeout(() => drawDepsDiagramArrows(LAST_DEPS_DIAGRAM.edges, LAST_DEPS_DIAGRAM.criticalEdges), 150);
+});
 
 load();
 </script>
