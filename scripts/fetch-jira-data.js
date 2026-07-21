@@ -153,6 +153,19 @@ function median(nums) {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
+// Linear-interpolation percentile, matching Excel/Sheets PERCENTILE.INC --
+// used for the Service Level Expectation (SLE): "85% of stories complete
+// within N days," computed per project over the rolling 8-week window
+// (see summarize() below).
+function percentile(nums, p) {
+  if (!nums.length) return null;
+  const s = [...nums].sort((a, b) => a - b);
+  const idx = (p / 100) * (s.length - 1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  if (lo === hi) return s[lo];
+  return s[lo] + (s[hi] - s[lo]) * (idx - lo);
+}
+
 function round1(n) {
   return n === null || n === undefined ? null : Number(n.toFixed(1));
 }
@@ -183,6 +196,17 @@ function adfToText(node) {
 }
 function isAiWorkflowTagged(description) {
   return AI_WORKFLOW_TEXT_PATTERN.test(adfToText(description));
+}
+
+// Third AI Leverage signal: this Jira site tags stories created under a
+// specific initiative plan with a label like "plan:intacct-modernization" --
+// confirmed on APCOM-255, which carries labels ["devQA", "plan:intacct-
+// modernization", "skipsQA"]. Any label starting with "plan:" means the
+// story was created by Claude as part of that plan, independent of whether
+// it also has an AI/Claude component tag or an aps-workflow text marker.
+const AI_WORKFLOW_LABEL_PATTERN = /^plan:/i;
+function isAiPlanLabeled(labels) {
+  return (labels || []).some((l) => AI_WORKFLOW_LABEL_PATTERN.test(l));
 }
 
 /** Objective AI Leverage signal, once a standard agent account exists: which
@@ -287,9 +311,89 @@ function analyzeIssue(issue, statusCategoryByName, aiWorkedKeys) {
   const hadTransition = histories.length > 0;
   const isAiTagged = aiWorkedKeys
     ? aiWorkedKeys.has(issue.key)
-    : (issue.fields.components || []).some((c) => isAiComponent(c.name)) || isAiWorkflowTagged(issue.fields.description);
+    : (issue.fields.components || []).some((c) => isAiComponent(c.name)) ||
+      isAiWorkflowTagged(issue.fields.description) ||
+      isAiPlanLabeled(issue.fields.labels);
 
   return { cycleTimeDays, leadTimeDays, regressed: regressions > 0, hadTransition, isAiTagged, resolved };
+}
+
+// Focus signal, take two. "Active Epics right now" (focusIntegrityActiveEpics
+// above) can't tell parallel work on different Epics by different people
+// apart from one person actually bouncing between several -- both look like
+// "5 active epics." This measures context-switching directly: how many
+// distinct Epics did each individual assignee actually touch in a given
+// week. Reconstructed retroactively from every touched issue's status
+// changelog (same history-parsing approach as analyzeIssue()) rather than
+// accumulated forward like Focus Integrity's snapshot history, so all 8
+// weeks are real on the very first run -- no waiting for future GitHub
+// Action runs to fill in blank weeks.
+const CONTEXT_SWITCH_THRESHOLD = 3; // epics/week considered "heavy" switching -- a starting guess, easy to retune once real numbers come in
+
+async function analyzeContextSwitching(key, now) {
+  // Deliberately not scoped to currently-open issues only: anyone who
+  // started AND finished a ticket entirely within the 8-week window would
+  // have dropped off an "open issues" query by the time this runs, and their
+  // context-switching that week would silently disappear. Querying by
+  // "status changed" instead catches every issue with any activity in the
+  // window, whatever its current status.
+  const issues = await searchAll(
+    `project = ${key} AND status changed after -${WINDOW_DAYS}d`,
+    ["assignee", "parent", "status", "created"],
+    "changelog"
+  );
+
+  const weekBoundaries = Array.from({ length: 8 }, (_, i) => now - (7 - i) * WEEK_MS);
+  // touchedByWeek[weekIndex]: Map<assigneeName, Set<epicKey>>
+  const touchedByWeek = weekBoundaries.map(() => new Map());
+
+  for (const issue of issues) {
+    const assignee = issue.fields.assignee ? issue.fields.assignee.displayName : null;
+    const epicKey = issue.fields.parent ? issue.fields.parent.key : null;
+    if (!assignee || !epicKey) continue; // unassigned, or not under an Epic -- nothing to attribute this to
+
+    const createdMs = new Date(issue.fields.created).getTime();
+    const transitions = (issue.changelog?.histories || [])
+      .flatMap((h) => h.items.filter((i) => i.field === "status").map((i) => ({ ts: new Date(h.created).getTime(), from: i.fromString, to: i.toString })))
+      .sort((a, b) => a.ts - b.ts);
+    // Status before the first known transition (or forever, if it never
+    // transitioned) -- needed so early weeks reflect what was actually true
+    // then, not the issue's current status.
+    const initialStatus = transitions.length ? transitions[0].from : issue.fields.status.name;
+
+    for (let w = 0; w < weekBoundaries.length; w++) {
+      const boundary = weekBoundaries[w];
+      if (createdMs > boundary) continue; // didn't exist yet as of this week's end
+
+      let statusAtBoundary = initialStatus;
+      for (const t of transitions) {
+        if (t.ts <= boundary) statusAtBoundary = t.to;
+        else break;
+      }
+      if (!isCycleTimeStatus(statusAtBoundary)) continue;
+
+      if (!touchedByWeek[w].has(assignee)) touchedByWeek[w].set(assignee, new Set());
+      touchedByWeek[w].get(assignee).add(epicKey);
+    }
+  }
+
+  const contextSwitchWeeklyAvg = touchedByWeek.map((assigneeMap) => {
+    const counts = Array.from(assigneeMap.values()).map((s) => s.size).filter((c) => c > 0);
+    return counts.length ? round1(avg(counts)) : null;
+  });
+
+  const thisWeekMap = touchedByWeek[touchedByWeek.length - 1];
+  const contextSwitchFlagged = Array.from(thisWeekMap.entries())
+    .map(([name, epics]) => ({ name, epicCount: epics.size, epicKeys: Array.from(epics).sort() }))
+    .filter((f) => f.epicCount >= CONTEXT_SWITCH_THRESHOLD)
+    .sort((a, b) => b.epicCount - a.epicCount);
+
+  return {
+    contextSwitchWeeklyAvg,
+    contextSwitchThisWeekAvg: contextSwitchWeeklyAvg[contextSwitchWeeklyAvg.length - 1],
+    contextSwitchFlagged,
+    contextSwitchThreshold: CONTEXT_SWITCH_THRESHOLD,
+  };
 }
 
 async function fetchStatusCategoryMap() {
@@ -330,6 +434,12 @@ function summarize(analyzed) {
     qualityLoopbackCount: regressed.length,
     qualityLoopbackSampleSize: withTransitions.length,
     aiLeverageRatePct: analyzed.length ? round1((aiTagged.length / analyzed.length) * 100) : null,
+    // Service Level Expectation: the 85th percentile of cycle time over this
+    // same population -- "85% of these stories completed within N days."
+    // Used as this project's own tailored Risk Status baseline (see
+    // analyzeProject) instead of one flat day-count ceiling applied to every
+    // project regardless of its normal pace.
+    sle85Days: round1(percentile(withCycleTime, 85)),
   };
 }
 
@@ -505,7 +615,7 @@ async function analyzeProject(key, statusCategoryByName, existingHistory) {
   // Rolling 8-week window, relative to right now.
   const windowIssues = await searchAll(
     `project = ${key} AND resolutiondate >= -${WINDOW_DAYS}d`,
-    ["created", "resolutiondate", "components", "status", "description"],
+    ["created", "resolutiondate", "components", "status", "description", "labels"],
     "changelog"
   );
   const aiWorkedKeys = await aiWorkedIssueKeys(key);
@@ -544,6 +654,32 @@ async function analyzeProject(key, statusCategoryByName, existingHistory) {
   const overall = summarize(analyzed);
   const thisWeek = weekly[weekly.length - 1];
 
+  // Risk Status: tailored per project instead of one flat day-count ceiling
+  // applied to every team equally. Baseline is this project's own SLE85 (the
+  // 85th percentile cycle time over the full rolling 8-week population,
+  // computed above in summarize()). "At Risk" means fewer than 85% of the
+  // issues this team actually completed *this week* landed inside that
+  // team's own baseline -- i.e. the team is currently missing the bar it
+  // itself has been setting, not some arbitrary number applied to everyone.
+  const thisWeekWithCycleTime = buckets[7].filter((a) => a.cycleTimeDays !== null);
+  const thisWeekSleAdherencePct = thisWeekWithCycleTime.length
+    ? round1((thisWeekWithCycleTime.filter((a) => a.cycleTimeDays <= overall.sle85Days).length / thisWeekWithCycleTime.length) * 100)
+    : null;
+  let riskStatus;
+  if (overall.sle85Days === null) {
+    // No baseline yet (too little history in this window) -- fall back to a
+    // simple average-vs-8-day check so the card still shows something sensible.
+    riskStatus = overall.cycleTimeAvg !== null && overall.cycleTimeAvg > 8 ? "At Risk" : "OK";
+  } else if (thisWeekSleAdherencePct === null) {
+    // Nothing resolved this week yet -- not enough signal to call it "At
+    // Risk," so default to OK rather than raise a false alarm.
+    riskStatus = "OK";
+  } else {
+    riskStatus = thisWeekSleAdherencePct >= 85 ? "OK" : "At Risk";
+  }
+
+  const contextSwitching = await analyzeContextSwitching(key, now);
+
   return {
     key,
     epics,
@@ -551,6 +687,10 @@ async function analyzeProject(key, statusCategoryByName, existingHistory) {
     focusIntegrityTotalEpics,
     focusIntegrityHistory,
     focusIntegrityWeekly,
+    ...contextSwitching,
+    sle85Days: overall.sle85Days,
+    thisWeekSleAdherencePct,
+    riskStatus,
     wipByStatus,
     wipTotal: wipIssues.length,
     dependencies,
