@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-25T12:59:32.765Z",
+  "generatedAt": "2026-08-25T15:51:00.000Z",
   "windowDays": 56,
   "groupingNote": "Metrics are grouped by real Jira project (no Pod/DM field exists yet). Update PROJECTS + grouping in fetch-jira-data.js once Pods/DMs are tracked in Jira.",
   "projects": [
@@ -1044,6 +1044,10 @@
         {
           "recordedAt": "2026-08-25T12:59:23.830Z",
           "activeEpics": 0
+        },
+        {
+          "recordedAt": "2026-08-25T15:50:50.189Z",
+          "activeEpics": 0
         }
       ],
       "focusIntegrityWeekly": [
@@ -1110,8 +1114,8 @@
       "weekly": [
         {
           "label": "Jun 30–Jul 7",
-          "weekStart": "2026-06-30T12:59:23.830Z",
-          "weekEnd": "2026-07-07T12:59:23.830Z",
+          "weekStart": "2026-06-30T15:50:50.189Z",
+          "weekEnd": "2026-07-07T15:50:50.189Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -1123,8 +1127,8 @@
         },
         {
           "label": "Jul 7–Jul 14",
-          "weekStart": "2026-07-07T12:59:23.830Z",
-          "weekEnd": "2026-07-14T12:59:23.830Z",
+          "weekStart": "2026-07-07T15:50:50.189Z",
+          "weekEnd": "2026-07-14T15:50:50.189Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -1136,8 +1140,8 @@
         },
         {
           "label": "Jul 14–Jul 21",
-          "weekStart": "2026-07-14T12:59:23.830Z",
-          "weekEnd": "2026-07-21T12:59:23.830Z",
+          "weekStart": "2026-07-14T15:50:50.189Z",
+          "weekEnd": "2026-07-21T15:50:50.189Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -1149,8 +1153,8 @@
         },
         {
           "label": "Jul 21–Jul 28",
-          "weekStart": "2026-07-21T12:59:23.830Z",
-          "weekEnd": "2026-07-28T12:59:23.830Z",
+          "weekStart": "2026-07-21T15:50:50.189Z",
+          "weekEnd": "2026-07-28T15:50:50.189Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -1162,8 +1166,8 @@
         },
         {
           "label": "Jul 28–Aug 4",
-          "weekStart": "2026-07-28T12:59:23.830Z",
-          "weekEnd": "2026-08-04T12:59:23.830Z",
+          "weekStart": "2026-07-28T15:50:50.189Z",
+          "weekEnd": "2026-08-04T15:50:50.189Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -1175,8 +1179,8 @@
         },
         {
           "label": "Aug 4–Aug 11",
-          "weekStart": "2026-08-04T12:59:23.830Z",
-          "weekEnd": "2026-08-11T12:59:23.830Z",
+          "weekStart": "2026-08-04T15:50:50.189Z",
+          "weekEnd": "2026-08-11T15:50:50.189Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -1188,8 +1192,8 @@
         },
         {
           "label": "Aug 11–Aug 18",
-          "weekStart": "2026-08-11T12:59:23.830Z",
-          "weekEnd": "2026-08-18T12:59:23.830Z",
+          "weekStart": "2026-08-11T15:50:50.189Z",
+          "weekEnd": "2026-08-18T15:50:50.189Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -1201,8 +1205,8 @@
         },
         {
           "label": "Aug 18–Aug 25",
-          "weekStart": "2026-08-18T12:59:23.830Z",
-          "weekEnd": "2026-08-25T12:59:23.830Z",
+          "weekStart": "2026-08-18T15:50:50.189Z",
+          "weekEnd": "2026-08-25T15:50:50.189Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -2255,6 +2259,10 @@
         {
           "recordedAt": "2026-08-25T12:59:25.131Z",
           "activeEpics": 0
+        },
+        {
+          "recordedAt": "2026-08-25T15:50:51.470Z",
+          "activeEpics": 0
         }
       ],
       "focusIntegrityWeekly": [
@@ -2321,8 +2329,8 @@
       "weekly": [
         {
           "label": "Jun 30–Jul 7",
-          "weekStart": "2026-06-30T12:59:25.131Z",
-          "weekEnd": "2026-07-07T12:59:25.131Z",
+          "weekStart": "2026-06-30T15:50:51.470Z",
+          "weekEnd": "2026-07-07T15:50:51.470Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -2334,8 +2342,8 @@
         },
         {
           "label": "Jul 7–Jul 14",
-          "weekStart": "2026-07-07T12:59:25.131Z",
-          "weekEnd": "2026-07-14T12:59:25.131Z",
+          "weekStart": "2026-07-07T15:50:51.470Z",
+          "weekEnd": "2026-07-14T15:50:51.470Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -2347,8 +2355,8 @@
         },
         {
           "label": "Jul 14–Jul 21",
-          "weekStart": "2026-07-14T12:59:25.131Z",
-          "weekEnd": "2026-07-21T12:59:25.131Z",
+          "weekStart": "2026-07-14T15:50:51.470Z",
+          "weekEnd": "2026-07-21T15:50:51.470Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -2360,8 +2368,8 @@
         },
         {
           "label": "Jul 21–Jul 28",
-          "weekStart": "2026-07-21T12:59:25.131Z",
-          "weekEnd": "2026-07-28T12:59:25.131Z",
+          "weekStart": "2026-07-21T15:50:51.470Z",
+          "weekEnd": "2026-07-28T15:50:51.470Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -2373,8 +2381,8 @@
         },
         {
           "label": "Jul 28–Aug 4",
-          "weekStart": "2026-07-28T12:59:25.131Z",
-          "weekEnd": "2026-08-04T12:59:25.131Z",
+          "weekStart": "2026-07-28T15:50:51.470Z",
+          "weekEnd": "2026-08-04T15:50:51.470Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -2386,8 +2394,8 @@
         },
         {
           "label": "Aug 4–Aug 11",
-          "weekStart": "2026-08-04T12:59:25.131Z",
-          "weekEnd": "2026-08-11T12:59:25.131Z",
+          "weekStart": "2026-08-04T15:50:51.470Z",
+          "weekEnd": "2026-08-11T15:50:51.470Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -2399,8 +2407,8 @@
         },
         {
           "label": "Aug 11–Aug 18",
-          "weekStart": "2026-08-11T12:59:25.131Z",
-          "weekEnd": "2026-08-18T12:59:25.131Z",
+          "weekStart": "2026-08-11T15:50:51.470Z",
+          "weekEnd": "2026-08-18T15:50:51.470Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -2412,8 +2420,8 @@
         },
         {
           "label": "Aug 18–Aug 25",
-          "weekStart": "2026-08-18T12:59:25.131Z",
-          "weekEnd": "2026-08-25T12:59:25.131Z",
+          "weekStart": "2026-08-18T15:50:51.470Z",
+          "weekEnd": "2026-08-25T15:50:51.470Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -3466,6 +3474,10 @@
         {
           "recordedAt": "2026-08-25T12:59:26.426Z",
           "activeEpics": 0
+        },
+        {
+          "recordedAt": "2026-08-25T15:50:52.769Z",
+          "activeEpics": 0
         }
       ],
       "focusIntegrityWeekly": [
@@ -3532,8 +3544,8 @@
       "weekly": [
         {
           "label": "Jun 30–Jul 7",
-          "weekStart": "2026-06-30T12:59:26.426Z",
-          "weekEnd": "2026-07-07T12:59:26.426Z",
+          "weekStart": "2026-06-30T15:50:52.769Z",
+          "weekEnd": "2026-07-07T15:50:52.769Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -3545,8 +3557,8 @@
         },
         {
           "label": "Jul 7–Jul 14",
-          "weekStart": "2026-07-07T12:59:26.426Z",
-          "weekEnd": "2026-07-14T12:59:26.426Z",
+          "weekStart": "2026-07-07T15:50:52.769Z",
+          "weekEnd": "2026-07-14T15:50:52.769Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -3558,8 +3570,8 @@
         },
         {
           "label": "Jul 14–Jul 21",
-          "weekStart": "2026-07-14T12:59:26.426Z",
-          "weekEnd": "2026-07-21T12:59:26.426Z",
+          "weekStart": "2026-07-14T15:50:52.769Z",
+          "weekEnd": "2026-07-21T15:50:52.769Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -3571,8 +3583,8 @@
         },
         {
           "label": "Jul 21–Jul 28",
-          "weekStart": "2026-07-21T12:59:26.426Z",
-          "weekEnd": "2026-07-28T12:59:26.426Z",
+          "weekStart": "2026-07-21T15:50:52.769Z",
+          "weekEnd": "2026-07-28T15:50:52.769Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -3584,8 +3596,8 @@
         },
         {
           "label": "Jul 28–Aug 4",
-          "weekStart": "2026-07-28T12:59:26.426Z",
-          "weekEnd": "2026-08-04T12:59:26.426Z",
+          "weekStart": "2026-07-28T15:50:52.769Z",
+          "weekEnd": "2026-08-04T15:50:52.769Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -3597,8 +3609,8 @@
         },
         {
           "label": "Aug 4–Aug 11",
-          "weekStart": "2026-08-04T12:59:26.426Z",
-          "weekEnd": "2026-08-11T12:59:26.426Z",
+          "weekStart": "2026-08-04T15:50:52.769Z",
+          "weekEnd": "2026-08-11T15:50:52.769Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -3610,8 +3622,8 @@
         },
         {
           "label": "Aug 11–Aug 18",
-          "weekStart": "2026-08-11T12:59:26.426Z",
-          "weekEnd": "2026-08-18T12:59:26.426Z",
+          "weekStart": "2026-08-11T15:50:52.769Z",
+          "weekEnd": "2026-08-18T15:50:52.769Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -3623,8 +3635,8 @@
         },
         {
           "label": "Aug 18–Aug 25",
-          "weekStart": "2026-08-18T12:59:26.426Z",
-          "weekEnd": "2026-08-25T12:59:26.426Z",
+          "weekStart": "2026-08-18T15:50:52.769Z",
+          "weekEnd": "2026-08-25T15:50:52.769Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -4677,6 +4689,10 @@
         {
           "recordedAt": "2026-08-25T12:59:27.394Z",
           "activeEpics": 0
+        },
+        {
+          "recordedAt": "2026-08-25T15:50:54.020Z",
+          "activeEpics": 0
         }
       ],
       "focusIntegrityWeekly": [
@@ -4743,8 +4759,8 @@
       "weekly": [
         {
           "label": "Jun 30–Jul 7",
-          "weekStart": "2026-06-30T12:59:27.394Z",
-          "weekEnd": "2026-07-07T12:59:27.394Z",
+          "weekStart": "2026-06-30T15:50:54.020Z",
+          "weekEnd": "2026-07-07T15:50:54.020Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -4756,8 +4772,8 @@
         },
         {
           "label": "Jul 7–Jul 14",
-          "weekStart": "2026-07-07T12:59:27.394Z",
-          "weekEnd": "2026-07-14T12:59:27.394Z",
+          "weekStart": "2026-07-07T15:50:54.020Z",
+          "weekEnd": "2026-07-14T15:50:54.020Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -4769,8 +4785,8 @@
         },
         {
           "label": "Jul 14–Jul 21",
-          "weekStart": "2026-07-14T12:59:27.394Z",
-          "weekEnd": "2026-07-21T12:59:27.394Z",
+          "weekStart": "2026-07-14T15:50:54.020Z",
+          "weekEnd": "2026-07-21T15:50:54.020Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -4782,8 +4798,8 @@
         },
         {
           "label": "Jul 21–Jul 28",
-          "weekStart": "2026-07-21T12:59:27.394Z",
-          "weekEnd": "2026-07-28T12:59:27.394Z",
+          "weekStart": "2026-07-21T15:50:54.020Z",
+          "weekEnd": "2026-07-28T15:50:54.020Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -4795,8 +4811,8 @@
         },
         {
           "label": "Jul 28–Aug 4",
-          "weekStart": "2026-07-28T12:59:27.394Z",
-          "weekEnd": "2026-08-04T12:59:27.394Z",
+          "weekStart": "2026-07-28T15:50:54.020Z",
+          "weekEnd": "2026-08-04T15:50:54.020Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -4808,8 +4824,8 @@
         },
         {
           "label": "Aug 4–Aug 11",
-          "weekStart": "2026-08-04T12:59:27.394Z",
-          "weekEnd": "2026-08-11T12:59:27.394Z",
+          "weekStart": "2026-08-04T15:50:54.020Z",
+          "weekEnd": "2026-08-11T15:50:54.020Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -4821,8 +4837,8 @@
         },
         {
           "label": "Aug 11–Aug 18",
-          "weekStart": "2026-08-11T12:59:27.394Z",
-          "weekEnd": "2026-08-18T12:59:27.394Z",
+          "weekStart": "2026-08-11T15:50:54.020Z",
+          "weekEnd": "2026-08-18T15:50:54.020Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -4834,8 +4850,8 @@
         },
         {
           "label": "Aug 18–Aug 25",
-          "weekStart": "2026-08-18T12:59:27.394Z",
-          "weekEnd": "2026-08-25T12:59:27.394Z",
+          "weekStart": "2026-08-18T15:50:54.020Z",
+          "weekEnd": "2026-08-25T15:50:54.020Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -5888,6 +5904,10 @@
         {
           "recordedAt": "2026-08-25T12:59:28.327Z",
           "activeEpics": 0
+        },
+        {
+          "recordedAt": "2026-08-25T15:50:54.795Z",
+          "activeEpics": 0
         }
       ],
       "focusIntegrityWeekly": [
@@ -5954,8 +5974,8 @@
       "weekly": [
         {
           "label": "Jun 30–Jul 7",
-          "weekStart": "2026-06-30T12:59:28.327Z",
-          "weekEnd": "2026-07-07T12:59:28.327Z",
+          "weekStart": "2026-06-30T15:50:54.795Z",
+          "weekEnd": "2026-07-07T15:50:54.795Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -5967,8 +5987,8 @@
         },
         {
           "label": "Jul 7–Jul 14",
-          "weekStart": "2026-07-07T12:59:28.327Z",
-          "weekEnd": "2026-07-14T12:59:28.327Z",
+          "weekStart": "2026-07-07T15:50:54.795Z",
+          "weekEnd": "2026-07-14T15:50:54.795Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -5980,8 +6000,8 @@
         },
         {
           "label": "Jul 14–Jul 21",
-          "weekStart": "2026-07-14T12:59:28.327Z",
-          "weekEnd": "2026-07-21T12:59:28.327Z",
+          "weekStart": "2026-07-14T15:50:54.795Z",
+          "weekEnd": "2026-07-21T15:50:54.795Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -5993,8 +6013,8 @@
         },
         {
           "label": "Jul 21–Jul 28",
-          "weekStart": "2026-07-21T12:59:28.327Z",
-          "weekEnd": "2026-07-28T12:59:28.327Z",
+          "weekStart": "2026-07-21T15:50:54.795Z",
+          "weekEnd": "2026-07-28T15:50:54.795Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -6006,8 +6026,8 @@
         },
         {
           "label": "Jul 28–Aug 4",
-          "weekStart": "2026-07-28T12:59:28.327Z",
-          "weekEnd": "2026-08-04T12:59:28.327Z",
+          "weekStart": "2026-07-28T15:50:54.795Z",
+          "weekEnd": "2026-08-04T15:50:54.795Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -6019,8 +6039,8 @@
         },
         {
           "label": "Aug 4–Aug 11",
-          "weekStart": "2026-08-04T12:59:28.327Z",
-          "weekEnd": "2026-08-11T12:59:28.327Z",
+          "weekStart": "2026-08-04T15:50:54.795Z",
+          "weekEnd": "2026-08-11T15:50:54.795Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -6032,8 +6052,8 @@
         },
         {
           "label": "Aug 11–Aug 18",
-          "weekStart": "2026-08-11T12:59:28.327Z",
-          "weekEnd": "2026-08-18T12:59:28.327Z",
+          "weekStart": "2026-08-11T15:50:54.795Z",
+          "weekEnd": "2026-08-18T15:50:54.795Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -6045,8 +6065,8 @@
         },
         {
           "label": "Aug 18–Aug 25",
-          "weekStart": "2026-08-18T12:59:28.327Z",
-          "weekEnd": "2026-08-25T12:59:28.327Z",
+          "weekStart": "2026-08-18T15:50:54.795Z",
+          "weekEnd": "2026-08-25T15:50:54.795Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -7099,6 +7119,10 @@
         {
           "recordedAt": "2026-08-25T12:59:29.682Z",
           "activeEpics": 0
+        },
+        {
+          "recordedAt": "2026-08-25T15:50:56.347Z",
+          "activeEpics": 0
         }
       ],
       "focusIntegrityWeekly": [
@@ -7165,8 +7189,8 @@
       "weekly": [
         {
           "label": "Jun 30–Jul 7",
-          "weekStart": "2026-06-30T12:59:29.682Z",
-          "weekEnd": "2026-07-07T12:59:29.682Z",
+          "weekStart": "2026-06-30T15:50:56.347Z",
+          "weekEnd": "2026-07-07T15:50:56.347Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -7178,8 +7202,8 @@
         },
         {
           "label": "Jul 7–Jul 14",
-          "weekStart": "2026-07-07T12:59:29.682Z",
-          "weekEnd": "2026-07-14T12:59:29.682Z",
+          "weekStart": "2026-07-07T15:50:56.347Z",
+          "weekEnd": "2026-07-14T15:50:56.347Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -7191,8 +7215,8 @@
         },
         {
           "label": "Jul 14–Jul 21",
-          "weekStart": "2026-07-14T12:59:29.682Z",
-          "weekEnd": "2026-07-21T12:59:29.682Z",
+          "weekStart": "2026-07-14T15:50:56.347Z",
+          "weekEnd": "2026-07-21T15:50:56.347Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -7204,8 +7228,8 @@
         },
         {
           "label": "Jul 21–Jul 28",
-          "weekStart": "2026-07-21T12:59:29.682Z",
-          "weekEnd": "2026-07-28T12:59:29.682Z",
+          "weekStart": "2026-07-21T15:50:56.347Z",
+          "weekEnd": "2026-07-28T15:50:56.347Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -7217,8 +7241,8 @@
         },
         {
           "label": "Jul 28–Aug 4",
-          "weekStart": "2026-07-28T12:59:29.682Z",
-          "weekEnd": "2026-08-04T12:59:29.682Z",
+          "weekStart": "2026-07-28T15:50:56.347Z",
+          "weekEnd": "2026-08-04T15:50:56.347Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -7230,8 +7254,8 @@
         },
         {
           "label": "Aug 4–Aug 11",
-          "weekStart": "2026-08-04T12:59:29.682Z",
-          "weekEnd": "2026-08-11T12:59:29.682Z",
+          "weekStart": "2026-08-04T15:50:56.347Z",
+          "weekEnd": "2026-08-11T15:50:56.347Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -7243,8 +7267,8 @@
         },
         {
           "label": "Aug 11–Aug 18",
-          "weekStart": "2026-08-11T12:59:29.682Z",
-          "weekEnd": "2026-08-18T12:59:29.682Z",
+          "weekStart": "2026-08-11T15:50:56.347Z",
+          "weekEnd": "2026-08-18T15:50:56.347Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -7256,8 +7280,8 @@
         },
         {
           "label": "Aug 18–Aug 25",
-          "weekStart": "2026-08-18T12:59:29.682Z",
-          "weekEnd": "2026-08-25T12:59:29.682Z",
+          "weekStart": "2026-08-18T15:50:56.347Z",
+          "weekEnd": "2026-08-25T15:50:56.347Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -8310,6 +8334,10 @@
         {
           "recordedAt": "2026-08-25T12:59:30.909Z",
           "activeEpics": 0
+        },
+        {
+          "recordedAt": "2026-08-25T15:50:57.629Z",
+          "activeEpics": 0
         }
       ],
       "focusIntegrityWeekly": [
@@ -8376,8 +8404,8 @@
       "weekly": [
         {
           "label": "Jun 30–Jul 7",
-          "weekStart": "2026-06-30T12:59:30.909Z",
-          "weekEnd": "2026-07-07T12:59:30.909Z",
+          "weekStart": "2026-06-30T15:50:57.629Z",
+          "weekEnd": "2026-07-07T15:50:57.629Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -8389,8 +8417,8 @@
         },
         {
           "label": "Jul 7–Jul 14",
-          "weekStart": "2026-07-07T12:59:30.909Z",
-          "weekEnd": "2026-07-14T12:59:30.909Z",
+          "weekStart": "2026-07-07T15:50:57.629Z",
+          "weekEnd": "2026-07-14T15:50:57.629Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -8402,8 +8430,8 @@
         },
         {
           "label": "Jul 14–Jul 21",
-          "weekStart": "2026-07-14T12:59:30.909Z",
-          "weekEnd": "2026-07-21T12:59:30.909Z",
+          "weekStart": "2026-07-14T15:50:57.629Z",
+          "weekEnd": "2026-07-21T15:50:57.629Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -8415,8 +8443,8 @@
         },
         {
           "label": "Jul 21–Jul 28",
-          "weekStart": "2026-07-21T12:59:30.909Z",
-          "weekEnd": "2026-07-28T12:59:30.909Z",
+          "weekStart": "2026-07-21T15:50:57.629Z",
+          "weekEnd": "2026-07-28T15:50:57.629Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -8428,8 +8456,8 @@
         },
         {
           "label": "Jul 28–Aug 4",
-          "weekStart": "2026-07-28T12:59:30.909Z",
-          "weekEnd": "2026-08-04T12:59:30.909Z",
+          "weekStart": "2026-07-28T15:50:57.629Z",
+          "weekEnd": "2026-08-04T15:50:57.629Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -8441,8 +8469,8 @@
         },
         {
           "label": "Aug 4–Aug 11",
-          "weekStart": "2026-08-04T12:59:30.909Z",
-          "weekEnd": "2026-08-11T12:59:30.909Z",
+          "weekStart": "2026-08-04T15:50:57.629Z",
+          "weekEnd": "2026-08-11T15:50:57.629Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -8454,8 +8482,8 @@
         },
         {
           "label": "Aug 11–Aug 18",
-          "weekStart": "2026-08-11T12:59:30.909Z",
-          "weekEnd": "2026-08-18T12:59:30.909Z",
+          "weekStart": "2026-08-11T15:50:57.629Z",
+          "weekEnd": "2026-08-18T15:50:57.629Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -8467,8 +8495,8 @@
         },
         {
           "label": "Aug 18–Aug 25",
-          "weekStart": "2026-08-18T12:59:30.909Z",
-          "weekEnd": "2026-08-25T12:59:30.909Z",
+          "weekStart": "2026-08-18T15:50:57.629Z",
+          "weekEnd": "2026-08-25T15:50:57.629Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -9521,6 +9549,10 @@
         {
           "recordedAt": "2026-08-25T12:59:31.842Z",
           "activeEpics": 0
+        },
+        {
+          "recordedAt": "2026-08-25T15:50:58.753Z",
+          "activeEpics": 0
         }
       ],
       "focusIntegrityWeekly": [
@@ -9587,8 +9619,8 @@
       "weekly": [
         {
           "label": "Jun 30–Jul 7",
-          "weekStart": "2026-06-30T12:59:31.842Z",
-          "weekEnd": "2026-07-07T12:59:31.842Z",
+          "weekStart": "2026-06-30T15:50:58.753Z",
+          "weekEnd": "2026-07-07T15:50:58.753Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -9600,8 +9632,8 @@
         },
         {
           "label": "Jul 7–Jul 14",
-          "weekStart": "2026-07-07T12:59:31.842Z",
-          "weekEnd": "2026-07-14T12:59:31.842Z",
+          "weekStart": "2026-07-07T15:50:58.753Z",
+          "weekEnd": "2026-07-14T15:50:58.753Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -9613,8 +9645,8 @@
         },
         {
           "label": "Jul 14–Jul 21",
-          "weekStart": "2026-07-14T12:59:31.842Z",
-          "weekEnd": "2026-07-21T12:59:31.842Z",
+          "weekStart": "2026-07-14T15:50:58.753Z",
+          "weekEnd": "2026-07-21T15:50:58.753Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -9626,8 +9658,8 @@
         },
         {
           "label": "Jul 21–Jul 28",
-          "weekStart": "2026-07-21T12:59:31.842Z",
-          "weekEnd": "2026-07-28T12:59:31.842Z",
+          "weekStart": "2026-07-21T15:50:58.753Z",
+          "weekEnd": "2026-07-28T15:50:58.753Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -9639,8 +9671,8 @@
         },
         {
           "label": "Jul 28–Aug 4",
-          "weekStart": "2026-07-28T12:59:31.842Z",
-          "weekEnd": "2026-08-04T12:59:31.842Z",
+          "weekStart": "2026-07-28T15:50:58.753Z",
+          "weekEnd": "2026-08-04T15:50:58.753Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -9652,8 +9684,8 @@
         },
         {
           "label": "Aug 4–Aug 11",
-          "weekStart": "2026-08-04T12:59:31.842Z",
-          "weekEnd": "2026-08-11T12:59:31.842Z",
+          "weekStart": "2026-08-04T15:50:58.753Z",
+          "weekEnd": "2026-08-11T15:50:58.753Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -9665,8 +9697,8 @@
         },
         {
           "label": "Aug 11–Aug 18",
-          "weekStart": "2026-08-11T12:59:31.842Z",
-          "weekEnd": "2026-08-18T12:59:31.842Z",
+          "weekStart": "2026-08-11T15:50:58.753Z",
+          "weekEnd": "2026-08-18T15:50:58.753Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
@@ -9678,8 +9710,8 @@
         },
         {
           "label": "Aug 18–Aug 25",
-          "weekStart": "2026-08-18T12:59:31.842Z",
-          "weekEnd": "2026-08-25T12:59:31.842Z",
+          "weekStart": "2026-08-18T15:50:58.753Z",
+          "weekEnd": "2026-08-25T15:50:58.753Z",
           "throughput": 0,
           "cycleTimeAvg": null,
           "leadTimeAvg": null,
